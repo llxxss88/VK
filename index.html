@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VK直播</title>
+    <meta name="theme-color" content="#0f0f0f">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VK直播">
+    <link rel="apple-touch-icon" href="icons/icon-180.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #0f0f0f;
+            color: white;
+            line-height: 1.5;
+            padding-bottom: 80px;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        
+        .header {
+            padding: 10px 15px;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        
+        .demo-notice {
+            background: linear-gradient(90deg, #ff6b6b, #ff8e53);
+            color: white;
+            text-align: center;
+            padding: 8px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .video-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            overflow: hidden;
+        }
+        
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 177.78%;
+        }
+        
+        #localVideo {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+        
+        .live-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: #ff3b30;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 10;
+        }
+        
+        .camera-controls {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        
+        .camera-error-overlay {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.7);
+            z-index: 20;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .camera-error-box {
+            background: rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 16px;
+            max-width: 90%;
+            color: #fff;
+        }
+        
+        .camera-error-actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        /* 聊天框样式 */
+        .chat-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 280px;
+            max-width: 80%;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            max-height: 200px;
+            overflow: hidden;
+        }
+        
+        .chat-header {
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffcc00;
+        }
+        
+        .chat-controls {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .chat-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 8px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .message {
+            font-size: 12px;
+            line-height: 1.4;
+            animation: messageSlide 0.3s ease;
+        }
+        
+        .message-user {
+            color: #4dabf7;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .message-content {
+            color: white;
+        }
+        
+        .chat-input-container {
+            padding: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 8px;
+        }
+        
+        .chat-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: white;
+            font-size: 12px;
+        }
+        
+        .chat-input:focus {
+            outline: none;
+            border-color: #4dabf7;
+        }
+        
+        .send-btn {
+            background: #4dabf7;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .control-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.6);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.2s;
+        }
+        
+        .control-btn:hover, .control-btn:active {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.1);
+        }
+        
+        .control-btn i {
+            font-size: 20px;
+        }
+        
+        .stats-container {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.5);
+            margin: 10px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 4px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffcc00;
+        }
+        
+        .gift-container {
+            padding: 15px;
+            margin: 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            position: relative;
+            min-height: 150px;
+        }
+        
+        .gift-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #ffcc00;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+        
+        .gift-title:hover {
+            transform: scale(1.05);
+        }
+        
+        .gift-title:active {
+            transform: scale(0.95);
+        }
+        
+        .hidden-hint {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            background: rgba(0,0,0,0.3);
+            padding: 2px 8px;
+            border-radius: 10px;
+            border: 1px dashed rgba(255,255,255,0.2);
+            display: none;
+        }
+        
+        .gift-list {
+            list-style: none;
+            max-height: 200px;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+        }
+        
+        .gift-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .gift-name {
+            font-weight: bold;
+            color: #ffcc00;
+        }
+        
+        .gift-value {
+            font-weight: bold;
+        }
+        
+        /* 隐藏控制面板 */
+        .hidden-controls-panel {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            background: rgba(0,0,0,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        
+        .hidden-controls-panel.show {
+            display: block;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .panel-title {
+            font-size: 18px;
+            color: #ffcc00;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .close-panel-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .close-panel-btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .control-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .control-card:hover {
+            transform: translateY(-5px);
+            background: linear-gradient(135deg, rgba(255,107,107,0.2), rgba(255,142,83,0.2));
+            border-color: rgba(255,107,107,0.3);
+        }
+        
+        .control-card:active {
+            transform: translateY(0);
+        }
+        
+        .control-icon {
+            font-size: 28px;
+            color: #ffcc00;
+        }
+        
+        .control-label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .control-value {
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+        }
+        
+        /* 弹幕控制区域 */
+        .danmu-controls {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .chat-send-controls {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .danmu-title {
+            font-size: 16px;
+            color: #ffcc00;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .danmu-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .danmu-input {
+            flex: 1;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .danmu-btn {
+            background: #ff6b6b;
+            border: none;
+            color: white;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        
+        .danmu-quick-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .quick-danmu-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .quick-danmu-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .quick-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .quick-control-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .quick-control-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .bottom-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.9);
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .action-btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            flex: 1;
+            max-width: 200px;
+            transition: all 0.2s;
+        }
+        
+        .action-btn:active {
+            transform: scale(0.95);
+            opacity: 0.9;
+        }
+        
+        .secondary-btn {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .gift-btn {
+            background: linear-gradient(135deg, #ffcc00, #ff9500);
+        }
+        
+        /* 弹幕样式 */
+        .danmu-item {
+            position: fixed;
+            top: 20%;
+            left: 100%;
+            white-space: nowrap;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.6);
+            padding: 4px 12px;
+            border-radius: 20px;
+            animation: danmuMove 8s linear forwards;
+            z-index: 1000;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .danmu-item.user-message {
+            background: rgba(59, 130, 246, 0.7);
+            color: white;
+        }
+        
+        .danmu-item.gift-message {
+            background: rgba(245, 158, 11, 0.7);
+            color: white;
+        }
+        
+        @keyframes danmuMove {
+            to {
+                left: -100%;
+            }
+        }
+        
+        /* 礼物弹幕样式 */
+        .gift-barrage {
+            position: fixed;
+            top: 50%;
+            left: 100%;
+            white-space: nowrap;
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffcc00;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            animation: barrageMove 3s linear forwards;
+            z-index: 1000;
+        }
+        
+        @keyframes barrageMove {
+            to {
+                left: -100%;
+            }
+        }
+        
+        /* 点击计数提示 */
+        .click-hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 2000;
+        }
+        
+        .click-hint.show {
+            opacity: 1;
+        }
+        
+        /* 手机适配 */
+        @media (max-width: 768px) {
+            .header {
+                padding: 8px 12px;
+            }
+            
+            .chat-container {
+                width: 240px;
+                max-height: 180px;
+            }
+            
+            .stat-value {
+                font-size: 20px;
+            }
+            
+            .control-btn {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .action-btn {
+                padding: 10px 16px;
+                font-size: 14px;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .hidden-controls-panel {
+                width: 95%;
+                top: 50px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .stats-container {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            
+            .stat-item {
+                text-align: left;
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+            }
+            
+            .chat-container {
+                width: 200px;
+                bottom: 0;
+            }
+            
+            .bottom-controls {
+                flex-wrap: wrap;
+            }
+            
+            .action-btn {
+                min-width: 45%;
+                font-size: 13px;
+                padding: 10px 14px;
+            }
+        }
+        
+        /* 动画效果 */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 0.5s ease;
+        }
+        
+        /* 滚动条样式 */
+        .chat-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="video-container">
+            <div class="video-wrapper">
+                <video id="localVideo" autoplay playsinline muted></video>
+                <div class="camera-error-overlay" id="cameraErrorOverlay">
+                    <div class="camera-error-box">
+                        <div class="camera-error-text" id="cameraErrorText">摄像头不可用</div>
+                        <div class="camera-error-actions">
+                            <button class="danmu-btn" onclick="retryCamera()">重试摄像头</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="live-badge">
+                    <i class="fas fa-circle" style="color: #ff3b30; font-size: 8px; margin-right: 5px;"></i>
+                    LIVE
+                </div>
+                
+                <!-- 观众聊天框 -->
+                <div class="chat-container" id="chatContainer">
+                    <div class="chat-header">
+                        <div class="chat-title">
+                            <i class="fas fa-comments"></i> 观众聊天
+                        </div>
+                        <div class="chat-controls">
+                            <button class="chat-btn" onclick="toggleChat()" title="最小化">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button class="chat-btn" onclick="clearChat()" title="清空">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chat-messages" id="chatMessages">
+                        <!-- 聊天消息动态生成 -->
+                    </div>
+                </div>
+                
+                <div class="camera-controls">
+                    <button class="control-btn" onclick="switchCamera()" id="switchCameraBtn" title="切换摄像头">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="control-btn" onclick="toggleMirror()" id="mirrorBtn" title="镜像翻转">
+                        <i class="fas fa-exchange-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-container">
+            <div class="stat-item">
+                <div class="stat-label">在线观众</div>
+                <div class="stat-value" id="viewerCount">1</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">收到礼物</div>
+                <div class="stat-value">¥<span id="giftTotal">0</span></div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">直播时长</div>
+                <div class="stat-value" id="liveDuration">00:00</div>
+            </div>
+        </div>
+        
+        <div class="gift-container">
+            <div class="gift-title" id="giftTitle">
+                🎁 礼物榜单
+            </div>
+            <ul class="gift-list" id="giftRanking">
+                <!-- 礼物列表动态生成 -->
+            </ul>
+            
+            <!-- 隐藏控制面板 -->
+            <div class="hidden-controls-panel" id="hiddenControlsPanel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <i class="fas fa-cogs"></i>
+                        隐藏控制面板
+                    </div>
+                    <button class="close-panel-btn" onclick="hideHiddenControls()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="controls-grid">
+                    <div class="control-card" onclick="addViewer()">
+                        <div class="control-icon">
+                            <i class="fas fa-user-plus"></i>
+                        </div>
+                        <div class="control-label">增加观众</div>
+                        <div class="control-value">当前: <span id="panelViewerCount">1</span></div>
+                    </div>
+                    
+                    <div class="control-card" onclick="sendGift('玫瑰', 20, getPanelSender())">
+                        <div class="control-icon">
+                            <i class="fas fa-seedling"></i>
+                        </div>
+                        <div class="control-label">送玫瑰</div>
+                        <div class="control-value">¥20</div>
+                    </div>
+                    
+                    <div class="control-card" onclick="sendGift('跑车', 100, getPanelSender())">
+                        <div class="control-icon">
+                            <i class="fas fa-car"></i>
+                        </div>
+                        <div class="control-label">送跑车</div>
+                        <div class="control-value">¥100</div>
+                    </div>
+                    
+                    <div class="control-card" onclick="sendGift('火箭', 300, getPanelSender())">
+                        <div class="control-icon">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <div class="control-label">送火箭</div>
+                        <div class="control-value">¥300</div>
+                    </div>
+                    
+                    <div class="control-card" onclick="addLiveMinutes(5)">
+                        <div class="control-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="control-label">增加直播时长</div>
+                        <div class="control-value">+5分钟</div>
+                    </div>
+                </div>
+                
+                
+                <div class="chat-send-controls">
+                    <div class="danmu-title">
+                        <i class="fas fa-paper-plane"></i> 发送消息
+                    </div>
+                    <div class="danmu-input-group">
+                        <input type="text" class="danmu-input" id="chatUserInput" placeholder="用户名" maxlength="16">
+                        <input type="text" class="danmu-input" id="chatMessageInput" placeholder="输入消息..." maxlength="50">
+                        <button class="danmu-btn" onclick="sendCustomChat()">发送消息</button>
+                    </div>
+                </div>
+                
+                <div class="quick-controls">
+                    <button class="quick-control-btn" onclick="hideHiddenControls()">
+                        <i class="fas fa-eye-slash"></i> 隐藏面板
+                    </button>
+                    <button class="quick-control-btn" onclick="addRandomViewers()">
+                        <i class="fas fa-users"></i> 随机增加观众
+                    </button>
+                    <button class="quick-control-btn" onclick="sendRandomGift()">
+                        <i class="fas fa-random"></i> 随机礼物
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 点击提示 -->
+    <div class="click-hint" id="clickHint"></div>
+
+    <script>
+        // 全局变量
+        let currentStream = null;
+        let currentFacingMode = 'user';
+        let isMirrored = true;
+        let viewers = 1;
+        let gifts = [];
+        let chatMessages = [];
+        let liveStartTime = Date.now();
+        let viewerInterval;
+        let liveTimer;
+        let chatMinimized = false;
+        let danmuCount = 0;
+        let simulationIntervals = [];
+        const viewerCap = 42;
+        let growthIntervalId = null;
+        let fluctuationIntervalId = null;
+        
+        // 隐藏控制面板相关
+        let clickCount = 0;
+        let clickTimer = null;
+        let isHiddenControlsVisible = false;
+        let clickTimes = [];
+        let longPressTimer = null;
+        
+        // 常用弹幕内容库
+        const danmuLibrary = [
+            "666666",
+            "太厉害了！",
+            "哈哈哈",
+            "笑死我了",
+            "太强了",
+            "支持主播",
+            "爱了爱了",
+            "厉害了",
+            "可以的",
+            "很期待",
+            "主播加油",
+            "期待",
+            "真实挑战吗",
+            "主播有实力",
+            "主播这是在哪里",
+            "主播厉害",
+            "这是在哪里？",
+            "这是在哪里呀",
+            "刺激",
+            "刺激",
+            "刺激",
+            "主播上次的太好看了",
+            "好看",
+        ];
+        
+        // 常用用户名库
+        const usernameLibrary = [
+ "sad","LUC","ZZZ","Jack",
+ "冷山","屁屁","新加坡小吴","船长","夏清",
+  "用户4396","用户7429","Fun","Trump",
+  "小狗","猫头鹰","A","温柔","星河","风叔"];
+        
+        // 初始化摄像头
+        async function initCamera(facingMode = 'user', allowFallback = true) {
+            try {
+                if (currentStream) {
+                    currentStream.getTracks().forEach(track => track.stop());
+                }
+                
+                const overlay = document.getElementById('cameraErrorOverlay');
+                const overlayText = document.getElementById('cameraErrorText');
+                const isSecure = window.isSecureContext;
+                const isLocalhost = ['localhost','127.0.0.1','::1'].includes(location.hostname);
+                if (!isSecure && !isLocalhost) {
+                    if (overlay && overlayText) {
+                        overlay.style.display = 'flex';
+                        overlayText.textContent = '需要在 HTTPS 或本机 localhost 环境下访问，当前为非安全来源';
+                    }
+                    showCameraError();
+                    return;
+                }
+                
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    if (overlay && overlayText) {
+                        overlay.style.display = 'flex';
+                        overlayText.textContent = '浏览器不支持摄像头接口';
+                    }
+                    showCameraError();
+                    return;
+                }
+                
+                const constraints = {
+                    video: {
+                        facingMode: { ideal: facingMode },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+                
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                currentStream = stream;
+                const videoElement = document.getElementById('localVideo');
+                videoElement.srcObject = stream;
+                
+                videoElement.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+                
+                document.getElementById('switchCameraBtn').innerHTML = 
+                    facingMode === 'user' ? 
+                    '<i class="fas fa-camera"></i>' : 
+                    '<i class="fas fa-camera-rotate"></i>';
+                
+                if (overlay) overlay.style.display = 'none';
+                    
+            } catch (err) {
+                console.error("摄像头访问失败:", err);
+                showCameraError();
+                const overlay = document.getElementById('cameraErrorOverlay');
+                const overlayText = document.getElementById('cameraErrorText');
+                if (overlay && overlayText) {
+                    overlay.style.display = 'flex';
+                    let msg = '摄像头访问失败';
+                    if (err && err.name) {
+                        if (err.name === 'NotAllowedError') msg = '未授权访问摄像头，请在浏览器中允许权限';
+                        else if (err.name === 'NotFoundError') msg = '未找到可用摄像头或被占用';
+                        else if (err.name === 'NotReadableError') msg = '摄像头设备忙或不可读';
+                        else if (err.name === 'OverconstrainedError') msg = '当前摄像头不支持该设置，尝试切换前/后摄像头';
+                    }
+                    overlayText.textContent = msg;
+                }
+                if (allowFallback) {
+                    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+                    try {
+                        await initCamera(nextMode, false);
+                        return;
+                    } catch (_) {}
+                }
+            }
+        }
+        
+        // 切换前后摄像头
+        async function switchCamera() {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            await initCamera(currentFacingMode);
+        }
+        
+        // 切换镜像模式
+        function toggleMirror() {
+            isMirrored = !isMirrored;
+            const videoElement = document.getElementById('localVideo');
+            videoElement.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+        }
+        
+        // 显示摄像头错误
+        function showCameraError() {
+            const videoElement = document.getElementById('localVideo');
+            videoElement.poster = "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80";
+        }
+        
+        function retryCamera() {
+            initCamera(currentFacingMode);
+        }
+        
+        // 处理标题点击事件
+        function setupTitleClickListener() {
+            const giftTitle = document.getElementById('giftTitle');
+            const hiddenHint = document.querySelector('.hidden-hint');
+            const clickHint = document.getElementById('clickHint');
+            
+            giftTitle.addEventListener('click', function() {
+                this.classList.add('pulse');
+                setTimeout(() => this.classList.remove('pulse'), 500);
+                
+                const now = Date.now();
+                clickTimes.push(now);
+                clickTimes = clickTimes.filter(t => now - t <= 1500);
+                if (clickTimes.length >= 3) {
+                    toggleHiddenControls();
+                    clickTimes = [];
+                    hiddenHint.style.display = 'none';
+                    return;
+                }
+                if (longPressTimer) clearTimeout(longPressTimer);
+                longPressTimer = setTimeout(() => {
+                    toggleHiddenControls();
+                }, 800);
+            });
+            giftTitle.addEventListener('mousedown', function() {
+                if (longPressTimer) clearTimeout(longPressTimer);
+                longPressTimer = setTimeout(() => {
+                    toggleHiddenControls();
+                }, 800);
+            });
+            giftTitle.addEventListener('mouseup', function() {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+            });
+            giftTitle.addEventListener('mouseleave', function() {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+            });
+            giftTitle.addEventListener('touchstart', function() {
+                if (longPressTimer) clearTimeout(longPressTimer);
+                longPressTimer = setTimeout(() => {
+                    toggleHiddenControls();
+                }, 800);
+            }, { passive: true });
+            giftTitle.addEventListener('touchend', function() {
+                if (longPressTimer) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+            });
+            
+            giftTitle.addEventListener('mouseenter', function() {
+                if (!isHiddenControlsVisible) {
+                    hiddenHint.style.display = 'inline-block';
+                }
+            });
+            
+            giftTitle.addEventListener('mouseleave', function() {
+                if (!isHiddenControlsVisible && clickCount === 0) {
+                    hiddenHint.style.display = 'none';
+                }
+            });
+        }
+        
+        // 显示/隐藏隐藏控制面板
+        function toggleHiddenControls() {
+            const panel = document.getElementById('hiddenControlsPanel');
+            
+            if (isHiddenControlsVisible) {
+                panel.classList.remove('show');
+                setTimeout(() => {
+                    panel.style.display = 'none';
+                }, 300);
+                isHiddenControlsVisible = false;
+            } else {
+                panel.style.display = 'block';
+                setTimeout(() => {
+                    panel.classList.add('show');
+                }, 10);
+                isHiddenControlsVisible = true;
+                
+                document.getElementById('panelViewerCount').textContent = viewers;
+            }
+        }
+        
+        // 隐藏控制面板
+        function hideHiddenControls() {
+            const panel = document.getElementById('hiddenControlsPanel');
+            panel.classList.remove('show');
+            setTimeout(() => {
+                panel.style.display = 'none';
+            }, 300);
+            isHiddenControlsVisible = false;
+        }
+        
+        // 已移除弹幕发送入口，弹幕仅在送礼时出现
+        
+        function sendCustomChat() {
+            const chatUserInput = document.getElementById('chatUserInput');
+            const chatMessageInput = document.getElementById('chatMessageInput');
+            const user = chatUserInput ? chatUserInput.value.trim() : '';
+            const content = chatMessageInput ? chatMessageInput.value.trim() : '';
+            if (user && content) {
+                addChatMessage(user, content);
+                chatMessageInput.value = '';
+                try { localStorage.setItem('panelSenderName', user); } catch (_) {}
+                showMessage(`已发送消息: ${content}`);
+            } else {
+                showMessage('请输入用户名和消息内容');
+            }
+        }
+        
+        // 发送弹幕（核心函数）
+        function sendDanmu(content, user = '观众') {
+            // 创建弹幕元素
+            const danmu = document.createElement('div');
+            danmu.className = 'danmu-item user-message';
+            danmu.textContent = `${user}: ${content}`;
+            
+            // 随机弹幕位置
+            const topPosition = 10 + Math.random() * 70;
+            danmu.style.top = `${topPosition}%`;
+            
+            // 添加到页面
+            document.body.appendChild(danmu);
+            
+            // 动画结束后移除元素
+            setTimeout(() => {
+                if (danmu.parentNode) {
+                    danmu.parentNode.removeChild(danmu);
+                }
+            }, 8000);
+            
+            // 同时添加到聊天框
+            addChatMessage(user, content);
+        }
+        
+        // 添加到聊天框
+        function addChatMessage(user, content) {
+            const chatMessagesEl = document.getElementById('chatMessages');
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message';
+            messageElement.innerHTML = `<span class="message-user">${user}:</span><span class="message-content">${content}</span>`;
+            
+            chatMessagesEl.appendChild(messageElement);
+            
+            // 限制最多显示30条消息
+            const messages = chatMessagesEl.querySelectorAll('.message');
+            if (messages.length > 30) {
+                messages[0].remove();
+            }
+            
+            // 滚动到底部
+            chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+            
+            // 保存到聊天记录
+            chatMessages.push({
+                user,
+                content,
+                time: new Date()
+            });
+        }
+        
+        function getPanelSender() {
+            const chatUserInput = document.getElementById('chatUserInput');
+            let user = chatUserInput ? chatUserInput.value.trim() : '';
+            if (!user) {
+                const saved = localStorage.getItem('panelSenderName') || '';
+                user = saved.trim();
+            }
+            return user;
+        }
+        
+        // 发送聊天消息
+        function sendChatMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const content = chatInput.value.trim();
+            
+            if (content) {
+                const randomUser = usernameLibrary[Math.floor(Math.random() * usernameLibrary.length)];
+                addChatMessage(randomUser, content);
+                chatInput.value = '';
+            }
+        }
+        
+        // 切换聊天框显示/隐藏
+        function toggleChat() {
+            const chatContainer = document.getElementById('chatContainer');
+            const chatMessages = document.getElementById('chatMessages');
+            const chatInputContainer = chatContainer.querySelector('.chat-input-container');
+            
+            if (chatMinimized) {
+                // 恢复显示
+                chatMessages.style.display = 'flex';
+                if (chatInputContainer) chatInputContainer.style.display = 'flex';
+                chatContainer.style.height = '200px';
+                chatMinimized = false;
+            } else {
+                // 最小化
+                chatMessages.style.display = 'none';
+                if (chatInputContainer) chatInputContainer.style.display = 'none';
+                chatContainer.style.height = 'auto';
+                chatMinimized = true;
+            }
+        }
+        
+        // 清空聊天记录
+        function clearChat() {
+            const chatMessagesEl = document.getElementById('chatMessages');
+            chatMessagesEl.innerHTML = '';
+            chatMessages = [];
+        }
+        
+        // 更新观众数
+        function addViewer() {
+            viewers += Math.floor(Math.random() * 10) + 1;
+            updateViewerDisplay();
+            
+            if (isHiddenControlsVisible) {
+                document.getElementById('panelViewerCount').textContent = viewers;
+            }
+        }
+        
+        // 随机增加观众
+        function addRandomViewers() {
+            const randomCount = Math.floor(Math.random() *1) +2;
+            viewers += randomCount;
+            updateViewerDisplay();
+            if (isHiddenControlsVisible) {
+                document.getElementById('panelViewerCount').textContent = viewers;
+            }
+        }
+        
+        // 发送随机礼物
+        function sendRandomGift() {
+            const randomGifts = [
+                {name: '鲜花', value: 1},
+                {name: '棒棒糖', value: 3},
+                {name: '啤酒', value: 5},
+            ];
+            
+            const gift = randomGifts[Math.floor(Math.random() * randomGifts.length)];
+            sendGift(gift.name, gift.value);
+            
+            showMessage(`收到了礼物: ${gift.name}`);
+        }
+        
+        // 更新观众显示
+        function updateViewerDisplay() {
+            document.getElementById('viewerCount').textContent = formatNumber(viewers);
+        }
+        
+        // 发送礼物
+        function sendGift(name, value, senderOverride) {
+            const gift = {
+                name,
+                value,
+                time: new Date(),
+                sender: senderOverride && senderOverride.trim() ? senderOverride.trim() : `用户${Math.floor(Math.random() * 10000)}`
+            };
+            
+            gifts.push(gift);
+            updateGiftDisplay();
+            
+            // 显示礼物动画
+            showGiftAnimation(name, value);
+            
+            // 显示礼物弹幕
+            const giftDanmu = document.createElement('div');
+            giftDanmu.className = 'danmu-item gift-message';
+            giftDanmu.textContent = `🎁 ${gift.sender} 赠送了 ${name} (¥${value})`;
+            giftDanmu.style.top = `${20 + Math.random() * 60}%`;
+            document.body.appendChild(giftDanmu);
+            
+            setTimeout(() => {
+                if (giftDanmu.parentNode) {
+                    giftDanmu.parentNode.removeChild(giftDanmu);
+                }
+            }, 8000);
+            
+            // 添加到聊天框
+            addChatMessage('系统', `${gift.sender} 赠送了 ${name} 价值 ¥${value}`);
+            
+            // 自动增加观众
+            viewers += Math.floor(Math.random() * 3) + 1;
+            updateViewerDisplay();
+            
+            if (isHiddenControlsVisible) {
+                document.getElementById('panelViewerCount').textContent = viewers;
+            }
+        }
+        
+        // 显示礼物动画
+        function showGiftAnimation(name, value) {
+            const barrage = document.createElement('div');
+            barrage.className = 'gift-barrage';
+            barrage.innerHTML = `🎁 ${name} ×1 ¥${value}`;
+            document.body.appendChild(barrage);
+            
+            setTimeout(() => {
+                barrage.remove();
+            }, 3000);
+        }
+        
+        // 更新礼物显示
+        function updateGiftDisplay() {
+            const total = gifts.reduce((sum, gift) => sum + gift.value, 0);
+            document.getElementById('giftTotal').textContent = formatNumber(total);
+            
+            const ranking = document.getElementById('giftRanking');
+            const recentGifts = gifts.slice(-10).reverse();
+            
+            ranking.innerHTML = recentGifts.map(gift => `
+                <li class="gift-item">
+                    <div>
+                        <span class="gift-name">${gift.name}</span>
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.6);">
+                            ${gift.sender} · ${formatTime(gift.time)}
+                        </div>
+                    </div>
+                    <div class="gift-value">¥${gift.value}</div>
+                </li>
+            `).join('');
+        }
+        
+        // 显示提示消息
+        function showMessage(message) {
+            const clickHint = document.getElementById('clickHint');
+            clickHint.textContent = message;
+            clickHint.classList.add('show');
+            setTimeout(() => clickHint.classList.remove('show'), 1500);
+        }
+        
+        // 更新直播时长
+        function updateLiveDuration() {
+            const duration = Date.now() - liveStartTime;
+            const minutes = Math.floor(duration / 60000);
+            const seconds = Math.floor((duration % 60000) / 1000);
+            document.getElementById('liveDuration').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+        
+        function addLiveMinutes(mins) {
+            liveStartTime -= mins * 60 * 1000;
+            updateLiveDuration();
+            showMessage(`直播时长 +${mins} 分钟`);
+        }
+        
+        // 重置模拟数据
+        function resetSimulation() {
+            viewers = 1;
+            gifts = [];
+            liveStartTime = Date.now();
+            updateViewerDisplay();
+            updateGiftDisplay();
+            
+            if (isHiddenControlsVisible) {
+                document.getElementById('panelViewerCount').textContent = viewers;
+            }
+            
+            showMessage('数据已重置');
+        }
+        
+        // 格式化数字
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+        
+        // 格式化时间
+        function formatTime(date) {
+            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+        
+        // 自动生成模拟数据
+        function startSimulation() {
+            if (growthIntervalId) {
+                clearInterval(growthIntervalId);
+            }
+            if (fluctuationIntervalId) {
+                clearInterval(fluctuationIntervalId);
+            }
+            growthIntervalId = setInterval(() => {
+                if (viewers < viewerCap) {
+                    const inc = 1 + Math.floor(Math.random() * 2); // 1-2人
+                    viewers = Math.min(viewerCap, viewers + inc);
+                    updateViewerDisplay();
+                    if (isHiddenControlsVisible) {
+                        document.getElementById('panelViewerCount').textContent = viewers;
+                    }
+                    if (viewers >= viewerCap) {
+                        clearInterval(growthIntervalId);
+                        startViewerFluctuation();
+                    }
+                } else {
+                    clearInterval(growthIntervalId);
+                    startViewerFluctuation();
+                }
+            }, 30000);
+            simulationIntervals.push(growthIntervalId);
+            
+            setTimeout(() => {
+                if (viewers > 1 && viewers < viewerCap) {
+                    viewers -= 1;
+                    updateViewerDisplay();
+                    if (isHiddenControlsVisible) {
+                        document.getElementById('panelViewerCount').textContent = viewers;
+                    }
+                }
+            }, 40000);
+            
+            // 自动发送随机礼物
+            simulationIntervals.push(setInterval(() => {
+                const randomGifts = [
+                    {name: '鲜花', value: 1},
+                    {name: '棒棒糖', value: 3},
+                    {name: '啤酒', value: 5}
+                ];
+                const gift = randomGifts[Math.floor(Math.random() * randomGifts.length)];
+                sendGift(gift.name, gift.value);
+            }, 60000));
+            
+            // 自动聊天消息
+            simulationIntervals.push(setInterval(() => {
+                const randomDanmu = danmuLibrary[Math.floor(Math.random() * danmuLibrary.length)];
+                const randomUser = usernameLibrary[Math.floor(Math.random() * usernameLibrary.length)];
+                addChatMessage(randomUser, randomDanmu);
+            }, 80000));
+        }
+        
+        function startViewerFluctuation() {
+            if (fluctuationIntervalId) {
+                clearInterval(fluctuationIntervalId);
+            }
+            fluctuationIntervalId = setInterval(() => {
+                const addMode = Math.random() < 0.5;
+                if (addMode) {
+                    const inc = 1 + Math.floor(Math.random() * 3); // +1到+3
+                    viewers = Math.min(viewerCap, viewers + inc);
+                } else {
+                    const dec = 1 + Math.floor(Math.random() * 2); // -1到-2
+                    viewers = Math.max(1, viewers - dec);
+                }
+                updateViewerDisplay();
+                if (isHiddenControlsVisible) {
+                    document.getElementById('panelViewerCount').textContent = viewers;
+                }
+            }, 30000);
+            simulationIntervals.push(fluctuationIntervalId);
+        }
+        
+        function simulateViewerFluctuation() {
+            const up = Math.floor(Math.random() * 6);
+            const down = Math.floor(Math.random() * 3);
+            const delta = Math.random() < 0.65 ? up : -down;
+            viewers = Math.max(1, viewers + delta);
+            updateViewerDisplay();
+            if (isHiddenControlsVisible) {
+                document.getElementById('panelViewerCount').textContent = viewers;
+            }
+        }
+        
+        // 页面加载完成
+        window.addEventListener('DOMContentLoaded', async () => {
+            await initCamera();
+            setupTitleClickListener();
+            startSimulation();
+            
+            liveTimer = setInterval(updateLiveDuration, 1000);
+            
+            // 初始消息
+            setTimeout(() => {
+                addChatMessage('系统', '欢迎来到直播间！');
+                sendGift('欢迎礼花', 1);
+            }, 1000);
+            
+            viewers = Math.floor(Math.random() * 4); 
+            updateViewerDisplay();
+            
+            // 回车发送消息
+            const chatInputEl = document.getElementById('chatInput');
+            if (chatInputEl) {
+                chatInputEl.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        sendChatMessage();
+                    }
+                });
+            }
+            
+            const chatMsgEl = document.getElementById('chatMessageInput');
+            if (chatMsgEl) {
+                chatMsgEl.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        sendCustomChat();
+                    }
+                });
+            }
+            
+            const chatUserEl = document.getElementById('chatUserInput');
+            if (chatUserEl) {
+                const saved = localStorage.getItem('panelSenderName');
+                if (saved) chatUserEl.value = saved;
+                chatUserEl.addEventListener('change', function() {
+                    const val = chatUserEl.value.trim();
+                    try { localStorage.setItem('panelSenderName', val); } catch (_) {}
+                });
+                chatUserEl.addEventListener('blur', function() {
+                    const val = chatUserEl.value.trim();
+                    try { localStorage.setItem('panelSenderName', val); } catch (_) {}
+                });
+            }
+        });
+        
+        // 清理资源
+        window.addEventListener('beforeunload', () => {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            clearInterval(liveTimer);
+            if (simulationIntervals && simulationIntervals.length) {
+                simulationIntervals.forEach(id => clearInterval(id));
+            }
+            if (growthIntervalId) clearInterval(growthIntervalId);
+            if (fluctuationIntervalId) clearInterval(fluctuationIntervalId);
+        });
+    </script>
+</body>
+</html>
+<script>
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
+</script>

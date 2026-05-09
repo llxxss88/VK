@@ -1,0 +1,16 @@
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# 临时文件
+*.tmp
+*.log
+
+# 敏感信息（如有配置请放这里）
+.env
+*.secret
