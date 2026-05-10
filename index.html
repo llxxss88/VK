@@ -81,8 +81,13 @@
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            overflow: hidden;
             visibility: hidden;
+        }
+        #remoteVideo video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         /* 角色选择 */
@@ -1085,7 +1090,7 @@
         <div class="video-container">
             <div class="video-wrapper">
                 <video id="localVideo" autoplay playsinline muted></video>
-                <video id="remoteVideo" autoplay playsinline muted></video>
+                <div id="remoteVideo"></div>
                 <div class="camera-error-overlay" id="cameraErrorOverlay">
                     <div class="camera-error-box">
                         <div class="camera-error-text" id="cameraErrorText">摄像头不可用</div>
@@ -1605,14 +1610,18 @@
                         { userId: remoteUid, renderDom: rv || 'remoteVideo' }
                     );
                     log('info', 'setRemoteVideoPlayer完成', { remoteUid });
-                    // 显式播放，避免 autoplay 策略问题
+                    // SDK 在 div 内创建了 video 元素，获取它
                     if (rv) {
-                        try { await rv.play(); } catch (_) {}
-                        setTimeout(() => { rv.muted = false; }, 1000);
-                        // 延迟检查视频状态（给媒体数据流入时间）
                         setTimeout(() => {
-                            log('info', 'remoteVideo状态', { readyState: rv.readyState, videoWidth: rv.videoWidth, videoHeight: rv.videoHeight, paused: rv.paused });
-                        }, 2000);
+                            const rvv = rv.querySelector('video');
+                            if (rvv) {
+                                try { rvv.play(); } catch (_) {}
+                                setTimeout(() => { rvv.muted = false; }, 1000);
+                                log('info', 'remoteVideo状态', { readyState: rvv.readyState, videoWidth: rvv.videoWidth, videoHeight: rvv.videoHeight, paused: rvv.paused });
+                            } else {
+                                log('error', 'SDK未创建video元素');
+                            }
+                        }, 500);
                     }
                     // 停止本地摄像头
                     if (currentStream) {
@@ -1704,8 +1713,10 @@
             // 全局点击处理：如果remoteVideo显示且暂停，点击时尝试播放
             document.addEventListener('click', () => {
                 const rv = document.getElementById('remoteVideo');
-                if (rv && rv.style.visibility === 'visible' && rv.paused) {
-                    rv.play().then(() => {
+                if (!rv || rv.style.visibility !== 'visible') return;
+                const rvv = rv.querySelector('video');
+                if (rvv && rvv.paused) {
+                    rvv.play().then(() => {
                         setConnectionState('直播中');
                         log('info', '点击后手动播放成功');
                     }).catch(err => log('error', '点击播放失败', { msg: err.message }));
