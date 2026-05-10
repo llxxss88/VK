@@ -1614,8 +1614,12 @@
                     // 切换画面：隐藏本地，显示远端
                     if (localVideo) { localVideo.style.display = 'none'; localVideo.srcObject = null; }
                     if (rv) {
-                        // 等待画面渲染后取消静音
-                        setTimeout(() => { rv.muted = false; }, 500);
+                        // 静音状态下 play 可绕过 autoplay 限制，渲染后再恢复音量
+                        rv.play().then(() => {
+                            setTimeout(() => { rv.muted = false; }, 300);
+                        }).catch(() => {
+                            log('warn', 'remoteVideo.play被拒，需点击画面激活');
+                        });
                         log('info', 'remoteVideo', { readyState: rv.readyState, videoWidth: rv.videoWidth, videoHeight: rv.videoHeight, paused: rv.paused });
                     }
                     log('info', 'setRemoteVideoPlayer成功', { remoteUid });
