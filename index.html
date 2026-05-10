@@ -1592,38 +1592,40 @@
             }
 
             // 监听远端流事件（观众端用）
-            // 首帧解码后再绑定渲染，确保流已就绪
-            engine.on(VERTC.events.onFirstPublicStreamVideoFrameDecoded, async (e) => {
-                const { userId: remoteUid } = e;
-                log('info', '首帧解码成功，开始渲染', { remoteUid });
+            engine.on(VERTC.events.onUserPublishStream, async (e) => {
+                const { userId: remoteUid, mediaType } = e;
+                log('info', 'onUserPublishStream触发', { remoteUid, mediaType });
+                setConnectionState('正在加载主播画面...');
                 try {
                     const rv = document.getElementById('remoteVideo');
                     if (rv) rv.style.visibility = 'visible';
+                    // 传入 DOM 元素而非字符串 ID，确保 SDK 正确绑定
                     await engine.setRemoteVideoPlayer(
                         VERTC.StreamIndex.STREAM_INDEX_MAIN,
-                        { userId: remoteUid, renderDom: 'remoteVideo' }
+                        { userId: remoteUid, renderDom: rv || 'remoteVideo' }
                     );
+                    log('info', 'setRemoteVideoPlayer完成', { remoteUid });
+                    // 显式播放，避免 autoplay 策略问题
+                    if (rv) {
+                        try { await rv.play(); } catch (_) {}
+                        setTimeout(() => { rv.muted = false; }, 1000);
+                        // 延迟检查视频状态（给媒体数据流入时间）
+                        setTimeout(() => {
+                            log('info', 'remoteVideo状态', { readyState: rv.readyState, videoWidth: rv.videoWidth, videoHeight: rv.videoHeight, paused: rv.paused });
+                        }, 2000);
+                    }
+                    // 停止本地摄像头
                     if (currentStream) {
                         currentStream.getTracks().forEach(t => t.stop());
                         currentStream = null;
                     }
                     if (localVideo) { localVideo.style.display = 'none'; localVideo.srcObject = null; }
-                    if (rv) {
-                        setTimeout(() => { rv.muted = false; }, 800);
-                    }
-                    log('info', 'remoteVideo', { readyState: rv.readyState, videoWidth: rv.videoWidth, videoHeight: rv.videoHeight, paused: rv.paused });
                     log('info', '远端画面渲染成功', { remoteUid });
                     setConnectionState('直播中');
                 } catch (err) {
                     log('error', '渲染远端画面失败', { message: err.message, code: err.code });
                     setConnectionState('加载画面失败: ' + err.message);
                 }
-            });
-
-            engine.on(VERTC.events.onUserPublishStream, async (e) => {
-                const { userId: remoteUid, mediaType } = e;
-                log('info', 'onUserPublishStream触发', { remoteUid, mediaType });
-                setConnectionState('正在加载主播画面...');
             });
 
             // 也监听分离的视频/音频发布事件
