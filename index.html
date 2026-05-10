@@ -1085,7 +1085,7 @@
         <div class="video-container">
             <div class="video-wrapper">
                 <video id="localVideo" autoplay playsinline muted></video>
-                <video id="remoteVideo" autoplay playsinline></video>
+                <video id="remoteVideo" autoplay playsinline muted></video>
                 <div class="camera-error-overlay" id="cameraErrorOverlay">
                     <div class="camera-error-box">
                         <div class="camera-error-text" id="cameraErrorText">摄像头不可用</div>
@@ -1598,29 +1598,20 @@
                 setConnectionState('正在加载主播画面...');
                 try {
                     const rv = document.getElementById('remoteVideo');
-                    if (rv) {
-                        rv.style.display = 'block';
-                        rv.muted = true; // 移动端需要 muted 才能 autoplay
-                    }
+                    if (rv) rv.style.display = 'block';
                     await engine.setRemoteVideoPlayer(
                         VERTC.StreamIndex.STREAM_INDEX_MAIN,
                         { userId: remoteUid, renderDom: 'remoteVideo' }
                     );
-                    // 停止本地摄像头预览
+                    // 停止本地摄像头预览，切换画面
                     if (currentStream) {
                         currentStream.getTracks().forEach(t => t.stop());
                         currentStream = null;
                     }
-                    // 切换画面：隐藏本地，显示远端
                     if (localVideo) { localVideo.style.display = 'none'; localVideo.srcObject = null; }
+                    // remoteVideo HTML 自带 muted，autoplay 不受限。渲染后恢复音量
                     if (rv) {
-                        // 静音状态下 play 可绕过 autoplay 限制，渲染后再恢复音量
-                        rv.play().then(() => {
-                            setTimeout(() => { rv.muted = false; }, 300);
-                        }).catch(() => {
-                            log('warn', 'remoteVideo.play被拒，需点击画面激活');
-                        });
-                        log('info', 'remoteVideo', { readyState: rv.readyState, videoWidth: rv.videoWidth, videoHeight: rv.videoHeight, paused: rv.paused });
+                        setTimeout(() => { rv.muted = false; }, 800);
                     }
                     log('info', 'setRemoteVideoPlayer成功', { remoteUid });
                     setConnectionState('直播中');
