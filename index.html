@@ -1800,6 +1800,12 @@
                 setConnectionState('等待主播开播...');
                 // 停止本地模拟，数据从主播同步
                 stopLocalSimulation();
+                // 停止本地摄像头预览，隐藏本地画面
+                if (currentStream) {
+                    currentStream.getTracks().forEach(t => t.stop());
+                    currentStream = null;
+                }
+                if (localVideo) localVideo.style.display = 'none';
                 document.getElementById('switchCameraBtn').style.display = 'none';
                 document.getElementById('mirrorBtn').style.display = 'none';
                 // 观众端显示礼物按钮
@@ -2177,7 +2183,7 @@
             if (chatMinimized) {
                 // 恢复显示
                 chatMessages.style.display = 'flex';
-                if (giftButtons) giftButtons.style.display = 'flex';
+                if (giftButtons) giftButtons.style.display = isAnchor ? 'none' : 'flex';
                 if (chatInputContainer) chatInputContainer.style.display = 'flex';
                 chatContainer.style.height = '300px';
                 chatMinimized = false;
