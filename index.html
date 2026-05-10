@@ -82,7 +82,7 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            display: none;
+            visibility: hidden;
         }
 
         /* 角色选择 */
@@ -1598,7 +1598,7 @@
                 setConnectionState('正在加载主播画面...');
                 try {
                     const rv = document.getElementById('remoteVideo');
-                    if (rv) rv.style.display = 'block';
+                    if (rv) rv.style.visibility = 'visible';
                     await engine.setRemoteVideoPlayer(
                         VERTC.StreamIndex.STREAM_INDEX_MAIN,
                         { userId: remoteUid, renderDom: 'remoteVideo' }
@@ -1678,7 +1678,7 @@
             engine.on(VERTC.events.onUserUnpublishStream, ({ userId: remoteUid }) => {
                 console.log('远端用户停止发布:', remoteUid);
                 setConnectionState('主播已下播');
-                if (remoteVideo) remoteVideo.style.display = 'none';
+                if (remoteVideo) remoteVideo.style.visibility = 'hidden';
                 if (localVideo) localVideo.style.display = 'block';
             });
 
@@ -1697,7 +1697,7 @@
             // 全局点击处理：如果remoteVideo显示且暂停，点击时尝试播放
             document.addEventListener('click', () => {
                 const rv = document.getElementById('remoteVideo');
-                if (rv && rv.style.display !== 'none' && rv.paused) {
+                if (rv && rv.style.visibility === 'visible' && rv.paused) {
                     rv.play().then(() => {
                         setConnectionState('直播中');
                         log('info', '点击后手动播放成功');
@@ -1773,7 +1773,7 @@
                     { renderDom: 'localVideo' }
                 );
                 localVideo.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
-                if (remoteVideo) remoteVideo.style.display = 'none';
+                if (remoteVideo) remoteVideo.style.visibility = 'hidden';
                 if (localVideo) localVideo.style.display = 'block';
 
                 setConnectionState('推流中');
@@ -1841,7 +1841,7 @@
             if (connStatus) connStatus.style.display = 'none';
             const giftBtns = document.getElementById('chatGiftButtons');
             if (giftBtns) giftBtns.style.display = 'flex';
-            if (remoteVideo) remoteVideo.style.display = 'none';
+            if (remoteVideo) remoteVideo.style.visibility = 'hidden';
             if (localVideo) localVideo.style.display = 'block';
             document.getElementById('switchCameraBtn').style.display = 'inline-flex';
             document.getElementById('mirrorBtn').style.display = 'inline-flex';
