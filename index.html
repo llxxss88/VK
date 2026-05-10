@@ -1509,13 +1509,25 @@
         // 初始化摄像头
         // ========== 火山引擎 RTC 核心逻辑 ==========
 
-        // 获取 Token（从页面输入框读取）
+        // 获取 Token（优先用输入框，否则自动请求本地服务器）
         async function fetchToken(userId) {
             const tokenInput = document.getElementById('tokenInput');
-            const token = tokenInput ? tokenInput.value.trim() : '';
-            if (!token) {
-                alert('请先粘贴火山引擎控制台生成的临时 Token');
-                throw new Error('Token 未填写');
+            const manualToken = tokenInput ? tokenInput.value.trim() : '';
+            let token = '';
+            if (manualToken) {
+                token = manualToken;
+            } else {
+                // 自动从本地调试服务器获取
+                try {
+                    const resp = await fetch(`http://localhost:3000/token?roomId=${ROOM_ID}&userId=${userId}`,
+                        { signal: AbortSignal.timeout(3000) });
+                    const data = await resp.json();
+                    token = data.token;
+                    log('info', '从本地服务器获取Token成功');
+                } catch (_) {
+                    alert('请先在输入框中粘贴火山引擎控制台生成的临时 Token，\n或在本机启动 npm start 调试服务器');
+                    throw new Error('Token 未填写且本地服务器不可用');
+                }
             }
             return {
                 appId: APP_ID,
