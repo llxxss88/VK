@@ -1598,7 +1598,10 @@
                 setConnectionState('正在加载主播画面...');
                 try {
                     const rv = document.getElementById('remoteVideo');
-                    if (rv) rv.style.display = 'block';
+                    if (rv) {
+                        rv.style.display = 'block';
+                        rv.muted = true; // 移动端需要 muted 才能 autoplay
+                    }
                     await engine.setRemoteVideoPlayer(
                         VERTC.StreamIndex.STREAM_INDEX_MAIN,
                         { userId: remoteUid, renderDom: 'remoteVideo' }
@@ -1611,8 +1614,8 @@
                     // 切换画面：隐藏本地，显示远端
                     if (localVideo) { localVideo.style.display = 'none'; localVideo.srcObject = null; }
                     if (rv) {
-                        rv.load();
-                        await rv.play().catch(() => log('warn', 'remoteVideo.play被拒，可点击画面激活'));
+                        // 等待画面渲染后取消静音
+                        setTimeout(() => { rv.muted = false; }, 500);
                         log('info', 'remoteVideo', { readyState: rv.readyState, videoWidth: rv.videoWidth, videoHeight: rv.videoHeight, paused: rv.paused });
                     }
                     log('info', 'setRemoteVideoPlayer成功', { remoteUid });
