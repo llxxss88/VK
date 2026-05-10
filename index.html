@@ -1592,10 +1592,10 @@
             }
 
             // 监听远端流事件（观众端用）
-            engine.on(VERTC.events.onUserPublishStream, async (e) => {
-                const { userId: remoteUid, mediaType } = e;
-                log('info', 'onUserPublishStream触发', { remoteUid, mediaType });
-                setConnectionState('正在加载主播画面...');
+            // 首帧解码后再绑定渲染，确保流已就绪
+            engine.on(VERTC.events.onFirstPublicStreamVideoFrameDecoded, async (e) => {
+                const { userId: remoteUid } = e;
+                log('info', '首帧解码成功，开始渲染', { remoteUid });
                 try {
                     const rv = document.getElementById('remoteVideo');
                     if (rv) rv.style.visibility = 'visible';
@@ -1603,22 +1603,27 @@
                         VERTC.StreamIndex.STREAM_INDEX_MAIN,
                         { userId: remoteUid, renderDom: 'remoteVideo' }
                     );
-                    // 停止本地摄像头预览，切换画面
                     if (currentStream) {
                         currentStream.getTracks().forEach(t => t.stop());
                         currentStream = null;
                     }
                     if (localVideo) { localVideo.style.display = 'none'; localVideo.srcObject = null; }
-                    // remoteVideo HTML 自带 muted，autoplay 不受限。渲染后恢复音量
                     if (rv) {
                         setTimeout(() => { rv.muted = false; }, 800);
                     }
-                    log('info', 'setRemoteVideoPlayer成功', { remoteUid });
+                    log('info', 'remoteVideo', { readyState: rv.readyState, videoWidth: rv.videoWidth, videoHeight: rv.videoHeight, paused: rv.paused });
+                    log('info', '远端画面渲染成功', { remoteUid });
                     setConnectionState('直播中');
                 } catch (err) {
-                    log('error', 'setRemoteVideoPlayer失败', { message: err.message, code: err.code });
-                    setConnectionState('加载远端画面失败: ' + err.message);
+                    log('error', '渲染远端画面失败', { message: err.message, code: err.code });
+                    setConnectionState('加载画面失败: ' + err.message);
                 }
+            });
+
+            engine.on(VERTC.events.onUserPublishStream, async (e) => {
+                const { userId: remoteUid, mediaType } = e;
+                log('info', 'onUserPublishStream触发', { remoteUid, mediaType });
+                setConnectionState('正在加载主播画面...');
             });
 
             // 也监听分离的视频/音频发布事件
