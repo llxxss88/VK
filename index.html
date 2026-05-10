@@ -1603,13 +1603,18 @@
                         VERTC.StreamIndex.STREAM_INDEX_MAIN,
                         { userId: remoteUid, renderDom: 'remoteVideo' }
                     );
-                    // 强制播放
+                    // 停止本地摄像头预览
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(t => t.stop());
+                        currentStream = null;
+                    }
+                    // 切换画面：隐藏本地，显示远端
+                    if (localVideo) { localVideo.style.display = 'none'; localVideo.srcObject = null; }
                     if (rv) {
                         rv.load();
                         await rv.play().catch(() => log('warn', 'remoteVideo.play被拒，可点击画面激活'));
                         log('info', 'remoteVideo', { readyState: rv.readyState, videoWidth: rv.videoWidth, videoHeight: rv.videoHeight, paused: rv.paused });
                     }
-                    if (localVideo) localVideo.style.display = 'none';
                     log('info', 'setRemoteVideoPlayer成功', { remoteUid });
                     setConnectionState('直播中');
                 } catch (err) {
@@ -1800,12 +1805,6 @@
                 setConnectionState('等待主播开播...');
                 // 停止本地模拟，数据从主播同步
                 stopLocalSimulation();
-                // 停止本地摄像头预览，隐藏本地画面
-                if (currentStream) {
-                    currentStream.getTracks().forEach(t => t.stop());
-                    currentStream = null;
-                }
-                if (localVideo) localVideo.style.display = 'none';
                 document.getElementById('switchCameraBtn').style.display = 'none';
                 document.getElementById('mirrorBtn').style.display = 'none';
                 // 观众端显示礼物按钮
