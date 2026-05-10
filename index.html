@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VK直播</title>
+    <title>VK海外直播</title>
     <meta name="theme-color" content="#0f0f0f">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="icons/icon-192.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="VK直播">
+    <meta name="apple-mobile-web-app-title" content="VK海外直播">
     <link rel="apple-touch-icon" href="icons/icon-180.png">
     <style>
         * {
@@ -205,7 +205,7 @@
             z-index: 20;
             display: flex;
             flex-direction: column;
-            max-height: 200px;
+            max-height: 300px;
             overflow: hidden;
         }
         
@@ -268,6 +268,29 @@
             color: white;
         }
         
+        .chat-gift-buttons {
+            padding: 4px 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .quick-gift-btn {
+            background: rgba(255, 205, 0, 0.12);
+            border: 1px solid rgba(255, 205, 0, 0.25);
+            border-radius: 4px;
+            color: #ffcc00;
+            font-size: 11px;
+            padding: 3px 7px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .quick-gift-btn:active {
+            background: rgba(255, 205, 0, 0.3);
+        }
+
         .chat-input-container {
             padding: 8px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -854,6 +877,204 @@
         .chat-messages::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.4);
         }
+        /* 主播主页面板 */
+        .profile-overlay {
+            position: fixed;
+            inset: 0;
+            background: #0f0f0f;
+            z-index: 2000;
+            overflow-y: auto;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            max-width: 480px;
+            margin-left: auto;
+        }
+        .profile-overlay.show { transform: translateX(0); }
+        .profile-overlay .back-btn {
+            position: sticky;
+            top: 12px;
+            left: 12px;
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2;
+            margin-bottom: -32px;
+        }
+        .profile-cover {
+            height: 160px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .profile-avatar-section {
+            text-align: center;
+            margin-top: -40px;
+            position: relative;
+            z-index: 3;
+        }
+        .profile-avatar {
+            width: 76px; height: 76px;
+            border-radius: 50%;
+            border: 3px solid #0f0f0f;
+            background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            margin: 0 auto;
+        }
+        .profile-name { font-size: 18px; font-weight: bold; margin-top: 8px; }
+        .profile-id { font-size: 11px; color: #999; margin-top: 2px; }
+        .profile-stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 16px;
+            margin: 14px 12px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+        }
+        .profile-stat { text-align: center; flex: 1; }
+        .profile-stat-num { font-size: 20px; font-weight: bold; }
+        .profile-stat-num.c-red { color: #ff6b6b; }
+        .profile-stat-num.c-yellow { color: #ffcc00; }
+        .profile-stat-num.c-blue { color: #4dabf7; }
+        .profile-stat-label { font-size: 11px; color: #999; margin-top: 4px; }
+        .profile-stat-divider { width: 1px; background: rgba(255,255,255,0.1); }
+        .profile-tabs {
+            display: flex;
+            margin: 14px 12px 0;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            padding: 4px;
+        }
+        .profile-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #999;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .profile-tab.active { background: rgba(255,255,255,0.1); color: white; font-weight: bold; }
+        .profile-feed { margin: 12px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 20px; }
+        .profile-card {
+            background: rgba(255,255,255,0.04);
+            border-radius: 12px;
+            padding: 14px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .profile-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .profile-card-avatar {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 15px;
+        }
+        .profile-card-name { font-size: 13px; font-weight: bold; }
+        .profile-card-time { font-size: 11px; color: #666; }
+        .profile-card-content { font-size: 14px; line-height: 1.6; margin-bottom: 8px; }
+        .profile-card-image {
+            width: 100%; aspect-ratio: 16/9;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            display: flex; align-items: center; justify-content: center;
+            color: #666; font-size: 13px; margin-bottom: 8px;
+        }
+        .profile-card-actions { display: flex; gap: 20px; font-size: 12px; color: #999; }
+        .profile-card-actions i { margin-right: 4px; }
+        .profile-club-banner {
+            margin: 12px; padding: 16px;
+            background: linear-gradient(135deg, rgba(255,204,0,0.08), rgba(255,149,0,0.08));
+            border-radius: 12px;
+            border: 1px solid rgba(255,204,0,0.2);
+            text-align: center;
+        }
+        .profile-club-name { font-size: 16px; font-weight: bold; color: #ffcc00; }
+        .profile-club-members { font-size: 12px; color: #999; margin-top: 4px; }
+        .profile-club-rank { margin-top: 8px; font-size: 13px; color: #ffcc00; }
+        .profile-member-list { margin: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .profile-member-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+        }
+        .profile-member-avatar {
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+        }
+        .profile-member-info { flex: 1; }
+        .profile-member-name { font-size: 14px; }
+        .profile-member-badge { font-size: 11px; }
+        .profile-member-badge.iron { color: #ff6b6b; }
+        .profile-member-badge.new { color: #4dabf7; }
+        .profile-member-level {
+            background: rgba(255,204,0,0.15);
+            color: #ffcc00;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        .profile-hidden { display: none; }
+
+        /* 主播信息卡片 */
+        .anchor-info-card {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(8px);
+            border-radius: 24px;
+            padding: 5px 14px 5px 5px;
+            border: 1px solid rgba(255,255,255,0.12);
+            cursor: pointer;
+            z-index: 15;
+            transition: transform 0.2s;
+        }
+        .anchor-info-card:active { transform: scale(0.95); }
+        .anchor-info-avatar {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.4);
+            background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .anchor-info-text {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .anchor-info-name {
+            font-size: 13px;
+            font-weight: bold;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .anchor-info-heat {
+            font-size: 10px;
+            color: #ff6b6b;
+            white-space: nowrap;
+        }
+        .anchor-info-heat i { font-size: 9px; margin-right: 2px; }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- 火山引擎 RTC Web SDK -->
@@ -877,7 +1098,14 @@
                     <i class="fas fa-circle" style="color: #ff3b30; font-size: 8px; margin-right: 5px;"></i>
                     LIVE
                 </div>
-                
+                <div class="anchor-info-card" id="anchorInfoCard" onclick="toggleProfile()">
+                    <div class="anchor-info-avatar">🎤</div>
+                    <div class="anchor-info-text">
+                        <div class="anchor-info-name" id="anchorInfoName">VK主播小明</div>
+                        <div class="anchor-info-heat"><i class="fas fa-fire"></i> 热度 <span id="anchorInfoHeat">2.3万</span></div>
+                    </div>
+                </div>
+
                 <!-- 观众聊天框 -->
                 <div class="chat-container" id="chatContainer">
                     <div class="chat-header">
@@ -896,6 +1124,17 @@
                     <div class="chat-messages" id="chatMessages">
                         <!-- 聊天消息动态生成 -->
                     </div>
+                    <div class="chat-gift-buttons" id="chatGiftButtons">
+                        <button class="quick-gift-btn" onclick="quickSendGift('鲜花', 1)">🌹 ¥1</button>
+                        <button class="quick-gift-btn" onclick="quickSendGift('棒棒糖', 3)">🍭 ¥3</button>
+                        <button class="quick-gift-btn" onclick="quickSendGift('啤酒', 5)">🍺 ¥5</button>
+                        <button class="quick-gift-btn" onclick="quickSendGift('跑车', 100)">🚗 ¥100</button>
+                        <button class="quick-gift-btn" onclick="quickSendGift('火箭', 300)">🚀 ¥300</button>
+                    </div>
+                    <div class="chat-input-container" id="chatInputContainer">
+                        <input type="text" class="chat-input" id="chatInput" placeholder="说点什么..." maxlength="50">
+                        <button class="send-btn" onclick="sendRealDanmu()">发送</button>
+                    </div>
                 </div>
 
                 <!-- 连接状态 -->
@@ -903,7 +1142,8 @@
 
                 <!-- 角色选择遮罩 -->
                 <div class="role-overlay" id="roleOverlay">
-                    <input type="text" id="tokenInput" placeholder="粘贴火山引擎控制台生成的临时Token" style="width:280px; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.6); color:white; font-size:13px; text-align:center;">
+                    <input type="text" id="tokenInput" placeholder="Token" style="width:280px; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.6); color:white; font-size:13px; text-align:center;">
+                    <input type="text" id="nicknameInput" placeholder="你的昵称" maxlength="12" style="width:280px; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.6); color:white; font-size:13px; text-align:center;">
                     <div style="display:flex; gap:10px;">
                         <button class="role-btn anchor-btn" onclick="initRTC(true)">
                             <i class="fas fa-video"></i> 开始直播（主播）
@@ -911,9 +1151,6 @@
                         <button class="role-btn viewer-btn" onclick="initRTC(false)">
                             <i class="fas fa-eye"></i> 观看直播（观众）
                         </button>
-                    </div>
-                    <div style="color:#aaa; font-size:11px; text-align:center; max-width:280px;">
-                        ⚠ 控制台生成Token时，<br>RoomId 填 <b>vk-live-room-001</b>，UserId 填 <b>anchor</b>
                     </div>
                 </div>
 
@@ -1034,7 +1271,152 @@
             </div>
         </div>
     </div>
-    
+
+    <!-- 主播主页面板 -->
+    <div class="profile-overlay" id="profileOverlay">
+        <button class="back-btn" onclick="toggleProfile()"><i class="fas fa-arrow-left"></i></button>
+        <div class="profile-cover"></div>
+        <div class="profile-avatar-section">
+            <div class="profile-avatar">🎤</div>
+            <div class="profile-name">VK主播小明</div>
+            <div class="profile-id">ID: vk_anchor_001</div>
+        </div>
+        <div class="profile-stats">
+            <div class="profile-stat">
+                <div class="profile-stat-num c-red">12.8万</div>
+                <div class="profile-stat-label">粉丝</div>
+            </div>
+            <div class="profile-stat-divider"></div>
+            <div class="profile-stat">
+                <div class="profile-stat-num c-yellow">3,826</div>
+                <div class="profile-stat-label">粉丝团</div>
+            </div>
+            <div class="profile-stat-divider"></div>
+            <div class="profile-stat">
+                <div class="profile-stat-num c-blue">89.2万</div>
+                <div class="profile-stat-label">获赞</div>
+            </div>
+        </div>
+        <div class="profile-tabs">
+            <div class="profile-tab active" onclick="switchProfileTab('feed', this)">动态</div>
+            <div class="profile-tab" onclick="switchProfileTab('club', this)">粉丝团</div>
+            <div class="profile-tab" onclick="switchProfileTab('fans', this)">粉丝</div>
+        </div>
+        <div class="profile-feed" id="profileTabFeed">
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <div class="profile-card-avatar">🎤</div>
+                    <div>
+                        <div class="profile-card-name">VK主播小明</div>
+                        <div class="profile-card-time">2小时前</div>
+                    </div>
+                </div>
+                <div class="profile-card-content">今晚8点准时开播！来听新歌首唱，不见不散 🔥</div>
+                <div class="profile-card-image">🎵 新歌预告封面</div>
+                <div class="profile-card-actions">
+                    <span><i class="far fa-heart"></i> 2,341</span>
+                    <span><i class="far fa-comment"></i> 486</span>
+                    <span><i class="fas fa-share"></i> 92</span>
+                </div>
+            </div>
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <div class="profile-card-avatar">🎤</div>
+                    <div>
+                        <div class="profile-card-name">VK主播小明</div>
+                        <div class="profile-card-time">昨天</div>
+                    </div>
+                </div>
+                <div class="profile-card-content">感谢大家昨天的支持！粉丝团突破3800人了，感动到哭 😭 今晚继续抽奖回馈大家！</div>
+                <div class="profile-card-actions">
+                    <span><i class="far fa-heart"></i> 5,128</span>
+                    <span><i class="far fa-comment"></i> 1,203</span>
+                    <span><i class="fas fa-share"></i> 156</span>
+                </div>
+            </div>
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <div class="profile-card-avatar">🎤</div>
+                    <div>
+                        <div class="profile-card-name">VK主播小明</div>
+                        <div class="profile-card-time">3天前</div>
+                    </div>
+                </div>
+                <div class="profile-card-content">分享一下今天的日常～在录音棚待了一整天，新歌马上要和大家见面了！</div>
+                <div class="profile-card-image" style="background:#1a1a2e;">🎙 录音棚日常</div>
+                <div class="profile-card-actions">
+                    <span><i class="far fa-heart"></i> 3,876</span>
+                    <span><i class="far fa-comment"></i> 892</span>
+                    <span><i class="fas fa-share"></i> 67</span>
+                </div>
+            </div>
+        </div>
+        <div class="profile-feed profile-hidden" id="profileTabClub">
+            <div class="profile-club-banner">
+                <div class="profile-club-name">🏆 小明家</div>
+                <div class="profile-club-members">粉丝团 · 3,826 人已加入</div>
+                <div class="profile-club-rank">🔥 本周贡献榜第 12 名</div>
+            </div>
+            <div class="profile-member-list">
+                <div class="profile-member-row">
+                    <div class="profile-member-avatar" style="background:linear-gradient(135deg,#ffcc00,#ff9500)">🥇</div>
+                    <div class="profile-member-info">
+                        <div class="profile-member-name">铁粉小王</div>
+                        <div class="profile-member-badge iron">粉丝团·Lv.28</div>
+                    </div>
+                    <div class="profile-member-level">贡献 ¥12,800</div>
+                </div>
+                <div class="profile-member-row">
+                    <div class="profile-member-avatar" style="background:linear-gradient(135deg,#c0c0c0,#888)">🥈</div>
+                    <div class="profile-member-info">
+                        <div class="profile-member-name">守护天使</div>
+                        <div class="profile-member-badge iron">粉丝团·Lv.22</div>
+                    </div>
+                    <div class="profile-member-level">贡献 ¥8,500</div>
+                </div>
+                <div class="profile-member-row">
+                    <div class="profile-member-avatar" style="background:linear-gradient(135deg,#cd7f32,#8b5a2b)">🥉</div>
+                    <div class="profile-member-info">
+                        <div class="profile-member-name">夜空下的星</div>
+                        <div class="profile-member-badge iron">粉丝团·Lv.19</div>
+                    </div>
+                    <div class="profile-member-level">贡献 ¥6,200</div>
+                </div>
+            </div>
+        </div>
+        <div class="profile-feed profile-hidden" id="profileTabFans">
+            <div class="profile-member-list">
+                <div class="profile-member-row">
+                    <div class="profile-member-avatar" style="background:linear-gradient(135deg,#ff6b6b,#ff8e53)">🔥</div>
+                    <div class="profile-member-info">
+                        <div class="profile-member-name">铁粉小王</div>
+                        <div class="profile-member-badge iron">铁粉</div>
+                    </div>
+                </div>
+                <div class="profile-member-row">
+                    <div class="profile-member-avatar" style="background:linear-gradient(135deg,#667eea,#764ba2)">☆</div>
+                    <div class="profile-member-info">
+                        <div class="profile-member-name">音乐爱好者</div>
+                        <div class="profile-member-badge new">新粉</div>
+                    </div>
+                </div>
+                <div class="profile-member-row">
+                    <div class="profile-member-avatar" style="background:linear-gradient(135deg,#4ecdc4,#44bd32)">♪</div>
+                    <div class="profile-member-info">
+                        <div class="profile-member-name">星空漫步</div>
+                        <div class="profile-member-badge iron">铁粉</div>
+                    </div>
+                </div>
+                <div class="profile-member-row">
+                    <div class="profile-member-avatar" style="background:linear-gradient(135deg,#a29bfe,#6c5ce7)">◆</div>
+                    <div class="profile-member-info">
+                        <div class="profile-member-name">追光者</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 点击提示 -->
     <div class="click-hint" id="clickHint"></div>
 
@@ -1059,6 +1441,7 @@
         // ========== 全局变量 ==========
         let engine = null;            // 火山引擎 RTC 引擎
         let isAnchor = false;        // 当前角色：主播/观众
+        let myNickname = '';         // 当前用户昵称
         let rtcActive = false;       // RTC 是否已激活
         let currentStream = null;
         let currentFacingMode = 'user';
@@ -1072,6 +1455,7 @@
         let chatMinimized = false;
         let danmuCount = 0;
         let simulationIntervals = [];
+        let statsSyncInterval = null;
         const viewerCap = 42;
         let growthIntervalId = null;
         let fluctuationIntervalId = null;
@@ -1173,7 +1557,17 @@
 
             // 使用固定 userId，与控制台生成 Token 时填的保持一致
             const userId = asAnchor ? 'anchor' : 'viewer';
-            log('info', 'userId已生成', { userId });
+
+            // 设置昵称
+            const nicknameInput = document.getElementById('nicknameInput');
+            if (asAnchor) {
+                myNickname = '主播';
+            } else {
+                const inputName = nicknameInput ? nicknameInput.value.trim() : '';
+                myNickname = inputName || '观众';
+            }
+
+            log('info', 'userId已生成', { userId, nickname: myNickname });
 
             let tokenData;
             try {
@@ -1238,6 +1632,44 @@
             });
             engine.on(VERTC.events.onUserLeave, (e) => {
                 log('info', 'onUserLeave', { userId: e.userId });
+            });
+
+            // 房间消息（弹幕/统计/礼物）
+            engine.on(VERTC.events.onRoomMessageReceived, (e) => {
+                log('info', '收到房间消息', { userId: e.userId, message: e.message });
+                try {
+                    const msg = JSON.parse(e.message);
+                    if (msg.type === 'danmu') {
+                        if (msg.fromUserId === (isAnchor ? 'anchor' : 'viewer')) return;
+                        sendDanmu(msg.content, msg.user);
+                    } else if (msg.type === 'stats') {
+                        if (!isAnchor) {
+                            viewers = msg.viewers;
+                            updateViewerDisplay();
+                            document.getElementById('giftTotal').textContent = formatNumber(msg.giftTotal);
+                            const secs = Math.floor(msg.liveDuration / 1000);
+                            document.getElementById('liveDuration').textContent =
+                                `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+                            if (msg.recentGifts && msg.recentGifts.length) {
+                                gifts = msg.recentGifts.map(g => ({ ...g, time: new Date(g.time) }));
+                                updateGiftDisplay();
+                            }
+                        }
+                    } else if (msg.type === 'gift') {
+                        if (msg.fromUserId === (isAnchor ? 'anchor' : 'viewer')) return;
+                        const gift = { name: msg.name, value: msg.value, sender: msg.sender, time: new Date() };
+                        gifts.push(gift);
+                        updateGiftDisplay();
+                        showGiftAnimation(msg.name, msg.value);
+                        const giftDanmu = document.createElement('div');
+                        giftDanmu.className = 'danmu-item gift-message';
+                        giftDanmu.textContent = `🎁 ${msg.sender} 赠送了 ${msg.name} (¥${msg.value})`;
+                        giftDanmu.style.top = `${20 + Math.random() * 60}%`;
+                        document.body.appendChild(giftDanmu);
+                        setTimeout(() => { if (giftDanmu.parentNode) giftDanmu.parentNode.removeChild(giftDanmu); }, 8000);
+                        addChatMessage('系统', `${msg.sender} 赠送了 ${msg.name} 价值 ¥${msg.value}`);
+                    }
+                } catch (_) {}
             });
 
             engine.on(VERTC.events.onUserUnpublishStream, ({ userId: remoteUid }) => {
@@ -1343,17 +1775,40 @@
 
                 setConnectionState('推流中');
 
+                // 定时同步统计数据给观众
+                statsSyncInterval = setInterval(() => {
+                    if (engine && rtcActive) {
+                        const total = gifts.reduce((s, g) => s + g.value, 0);
+                        engine.sendRoomMessage(JSON.stringify({
+                            type: 'stats',
+                            viewers: viewers,
+                            giftTotal: total,
+                            liveDuration: Date.now() - liveStartTime,
+                            recentGifts: gifts.slice(-10).map(g => ({
+                                name: g.name, value: g.value, sender: g.sender, time: g.time.getTime()
+                            }))
+                        }));
+                    }
+                }, 3000);
+
                 // 更新开关状态
                 document.getElementById('switchCameraBtn').style.display = 'inline-flex';
                 document.getElementById('mirrorBtn').style.display = 'inline-flex';
+                // 主播端隐藏礼物按钮
+                document.getElementById('chatGiftButtons').style.display = 'none';
             } else {
                 setConnectionState('等待主播开播...');
+                // 停止本地模拟，数据从主播同步
+                stopLocalSimulation();
                 document.getElementById('switchCameraBtn').style.display = 'none';
                 document.getElementById('mirrorBtn').style.display = 'none';
+                // 观众端显示礼物按钮
+                document.getElementById('chatGiftButtons').style.display = 'flex';
             }
 
             rtcActive = true;
             document.getElementById('stopLiveBtn').style.display = 'inline-flex';
+            document.getElementById('anchorInfoCard').style.display = 'flex';
         }
 
         // 停止 RTC
@@ -1372,6 +1827,7 @@
                 engine = null;
             }
             rtcActive = false;
+            if (statsSyncInterval) { clearInterval(statsSyncInterval); statsSyncInterval = null; }
 
             // 恢复 UI
             const roleOverlay = document.getElementById('roleOverlay');
@@ -1380,11 +1836,14 @@
             const localVideo = document.getElementById('localVideo');
             if (roleOverlay) roleOverlay.style.display = 'flex';
             if (connStatus) connStatus.style.display = 'none';
+            const giftBtns = document.getElementById('chatGiftButtons');
+            if (giftBtns) giftBtns.style.display = 'flex';
             if (remoteVideo) remoteVideo.style.display = 'none';
             if (localVideo) localVideo.style.display = 'block';
             document.getElementById('switchCameraBtn').style.display = 'inline-flex';
             document.getElementById('mirrorBtn').style.display = 'inline-flex';
             document.getElementById('stopLiveBtn').style.display = 'none';
+            document.getElementById('anchorInfoCard').style.display = 'none';
             setConnectionState('未连接');
         }
 
@@ -1630,6 +2089,36 @@
             addChatMessage(user, content);
         }
         
+        // 通过 RTC 发送实时弹幕
+        function sendRealDanmu() {
+            const input = document.getElementById('chatInput');
+            if (!input) return;
+            const content = input.value.trim();
+            if (!content) return;
+
+            if (!engine || !rtcActive) {
+                // RTC 未激活时，本地模拟发送
+                sendDanmu(content, '本地');
+                input.value = '';
+                return;
+            }
+
+            sendDanmu(content, myNickname || (isAnchor ? '主播' : '观众'));
+            try {
+                engine.sendRoomMessage(JSON.stringify({
+                    type: 'danmu',
+                    user: myNickname || (isAnchor ? '主播' : '观众'),
+                    content: content,
+                    time: Date.now(),
+                    fromUserId: isAnchor ? 'anchor' : 'viewer'
+                }));
+                log('info', '发送房间消息', { user: myNickname, content });
+            } catch (e) {
+                log('error', '发送消息失败', { message: e.message });
+            }
+            input.value = '';
+        }
+
         // 添加到聊天框
         function addChatMessage(user, content) {
             const chatMessagesEl = document.getElementById('chatMessages');
@@ -1683,16 +2172,19 @@
             const chatContainer = document.getElementById('chatContainer');
             const chatMessages = document.getElementById('chatMessages');
             const chatInputContainer = chatContainer.querySelector('.chat-input-container');
-            
+            const giftButtons = document.getElementById('chatGiftButtons');
+
             if (chatMinimized) {
                 // 恢复显示
                 chatMessages.style.display = 'flex';
+                if (giftButtons) giftButtons.style.display = 'flex';
                 if (chatInputContainer) chatInputContainer.style.display = 'flex';
-                chatContainer.style.height = '200px';
+                chatContainer.style.height = '300px';
                 chatMinimized = false;
             } else {
                 // 最小化
                 chatMessages.style.display = 'none';
+                if (giftButtons) giftButtons.style.display = 'none';
                 if (chatInputContainer) chatInputContainer.style.display = 'none';
                 chatContainer.style.height = 'auto';
                 chatMinimized = true;
@@ -1726,6 +2218,11 @@
             }
         }
         
+        // 快捷送礼（聊天框按钮）
+        function quickSendGift(name, value) {
+            sendGift(name, value, myNickname || (isAnchor ? '主播' : '观众'));
+        }
+
         // 发送随机礼物
         function sendRandomGift() {
             const randomGifts = [
@@ -1743,6 +2240,13 @@
         // 更新观众显示
         function updateViewerDisplay() {
             document.getElementById('viewerCount').textContent = formatNumber(viewers);
+            updateHeat();
+        }
+        function updateHeat() {
+            const heat = viewers * 137;
+            const heatStr = heat >= 10000 ? (heat / 10000).toFixed(1) + '万' : formatNumber(Math.floor(heat));
+            const el = document.getElementById('anchorInfoHeat');
+            if (el) el.textContent = heatStr;
         }
         
         // 发送礼物
@@ -1775,7 +2279,20 @@
             
             // 添加到聊天框
             addChatMessage('系统', `${gift.sender} 赠送了 ${name} 价值 ¥${value}`);
-            
+
+            // 通过 RTC 广播礼物给房间所有人
+            if (engine && rtcActive) {
+                try {
+                    engine.sendRoomMessage(JSON.stringify({
+                        type: 'gift',
+                        name: name,
+                        value: value,
+                        sender: gift.sender,
+                        fromUserId: isAnchor ? 'anchor' : 'viewer'
+                    }));
+                } catch (_) {}
+            }
+
             // 自动增加观众
             viewers += Math.floor(Math.random() * 3) + 1;
             updateViewerDisplay();
@@ -1857,6 +2374,22 @@
         }
         
         // 格式化数字
+        // 主播主页
+        function toggleProfile() {
+            const overlay = document.getElementById('profileOverlay');
+            if (overlay.classList.contains('show')) {
+                overlay.classList.remove('show');
+            } else {
+                overlay.classList.add('show');
+            }
+        }
+        function switchProfileTab(tab, el) {
+            document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            document.querySelectorAll('[id^="profileTab"]').forEach(p => p.classList.add('profile-hidden'));
+            document.getElementById('profileTab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('profile-hidden');
+        }
+
         function formatNumber(num) {
             return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         }
@@ -1866,6 +2399,14 @@
             return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
         }
         
+        // 停止本地模拟（观众进房后切换到接收主播数据）
+        function stopLocalSimulation() {
+            simulationIntervals.forEach(id => clearInterval(id));
+            simulationIntervals = [];
+            if (growthIntervalId) { clearInterval(growthIntervalId); growthIntervalId = null; }
+            if (fluctuationIntervalId) { clearInterval(fluctuationIntervalId); fluctuationIntervalId = null; }
+        }
+
         // 自动生成模拟数据
         function startSimulation() {
             if (growthIntervalId) {
@@ -1977,7 +2518,7 @@
             if (chatInputEl) {
                 chatInputEl.addEventListener('keypress', function(e) {
                     if (e.key === 'Enter') {
-                        sendChatMessage();
+                        sendRealDanmu();
                     }
                 });
             }
@@ -2028,6 +2569,7 @@
             }
             if (growthIntervalId) clearInterval(growthIntervalId);
             if (fluctuationIntervalId) clearInterval(fluctuationIntervalId);
+            if (statsSyncInterval) clearInterval(statsSyncInterval);
         });
     </script>
 </body>

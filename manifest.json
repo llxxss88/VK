@@ -1,6 +1,6 @@
 {
-  "name": "VK直播",
-  "short_name": "VK直播",
+  "name": "VK海外直播",
+  "short_name": "VK海外直播",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

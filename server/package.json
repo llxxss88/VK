@@ -1,7 +1,7 @@
 {
   "name": "vk-live-token-server",
   "version": "1.0.0",
-  "description": "VK直播 Token 签名服务",
+  "description": "VK海外直播 Token 签名服务",
   "main": "genToken.js",
   "scripts": {
     "start": "node genToken.js"
