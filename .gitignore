@@ -14,3 +14,8 @@ desktop.ini
 # 敏感信息（如有配置请放这里）
 .env
 *.secret
+
+# Node
+node_modules/
+
+# 注意：server/genToken.js 包含 AppKey，请勿推送到公开仓库

@@ -74,6 +74,72 @@
             object-fit: cover;
             transform: scaleX(-1);
         }
+
+        #remoteVideo {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        /* 角色选择 */
+        .role-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.6);
+            z-index: 30;
+            gap: 16px;
+        }
+
+        .role-btn {
+            padding: 14px 40px;
+            border-radius: 28px;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            transition: all 0.2s;
+            min-width: 200px;
+        }
+
+        .role-btn.anchor-btn {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+        }
+
+        .role-btn.viewer-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .role-btn:active {
+            transform: scale(0.95);
+        }
+
+        .connection-status {
+            position: absolute;
+            top: 45px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: #ff6b6b;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 12px;
+            z-index: 25;
+            display: none;
+            max-width: 90%;
+            white-space: pre-wrap;
+            word-break: break-all;
+            text-align: center;
+            line-height: 1.6;
+        }
         
         .live-badge {
             position: absolute;
@@ -790,12 +856,15 @@
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- 火山引擎 RTC Web SDK -->
+    <script src="https://lf-unpkg.volccdn.com/obj/vcloudfe/sdk/@volcengine/rtc/4.68.3/1775544985594/index.min.js"></script>
 </head>
 <body>
     <div class="container">
         <div class="video-container">
             <div class="video-wrapper">
                 <video id="localVideo" autoplay playsinline muted></video>
+                <video id="remoteVideo" autoplay playsinline></video>
                 <div class="camera-error-overlay" id="cameraErrorOverlay">
                     <div class="camera-error-box">
                         <div class="camera-error-text" id="cameraErrorText">摄像头不可用</div>
@@ -828,8 +897,30 @@
                         <!-- 聊天消息动态生成 -->
                     </div>
                 </div>
-                
+
+                <!-- 连接状态 -->
+                <div class="connection-status" id="connectionStatus">未连接</div>
+
+                <!-- 角色选择遮罩 -->
+                <div class="role-overlay" id="roleOverlay">
+                    <input type="text" id="tokenInput" placeholder="粘贴火山引擎控制台生成的临时Token" style="width:280px; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.6); color:white; font-size:13px; text-align:center;">
+                    <div style="display:flex; gap:10px;">
+                        <button class="role-btn anchor-btn" onclick="initRTC(true)">
+                            <i class="fas fa-video"></i> 开始直播（主播）
+                        </button>
+                        <button class="role-btn viewer-btn" onclick="initRTC(false)">
+                            <i class="fas fa-eye"></i> 观看直播（观众）
+                        </button>
+                    </div>
+                    <div style="color:#aaa; font-size:11px; text-align:center; max-width:280px;">
+                        ⚠ 控制台生成Token时，<br>RoomId 填 <b>vk-live-room-001</b>，UserId 填 <b>anchor</b>
+                    </div>
+                </div>
+
                 <div class="camera-controls">
+                    <button class="control-btn" onclick="stopRTC()" id="stopLiveBtn" title="结束直播" style="display:none; background: rgba(255,59,48,0.6); border-color: #ff3b30;">
+                        <i class="fas fa-stop"></i>
+                    </button>
                     <button class="control-btn" onclick="switchCamera()" id="switchCameraBtn" title="切换摄像头">
                         <i class="fas fa-sync-alt"></i>
                     </button>
@@ -948,7 +1039,27 @@
     <div class="click-hint" id="clickHint"></div>
 
     <script>
-        // 全局变量
+        // ========== 调试日志 ==========
+        const LOG_SERVER = 'http://localhost:3000';
+        function log(type, message, data) {
+            console.log(`[${type}]`, message, data || '');
+            try {
+                fetch(`${LOG_SERVER}/log`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, message, data: data || undefined })
+                }).catch(() => {});
+            } catch (_) {}
+        }
+
+        // ========== 火山引擎 RTC 配置 ==========
+        const APP_ID = '69fde5ffe192960176372176';  // 火山引擎 AppId
+        const ROOM_ID = 'vk-live-room-001';         // 房间号，主播和观众需一致
+
+        // ========== 全局变量 ==========
+        let engine = null;            // 火山引擎 RTC 引擎
+        let isAnchor = false;        // 当前角色：主播/观众
+        let rtcActive = false;       // RTC 是否已激活
         let currentStream = null;
         let currentFacingMode = 'user';
         let isMirrored = true;
@@ -1007,12 +1118,282 @@
   "小狗","猫头鹰","A","温柔","星河","风叔"];
         
         // 初始化摄像头
+        // ========== 火山引擎 RTC 核心逻辑 ==========
+
+        // 获取 Token（从页面输入框读取）
+        async function fetchToken(userId) {
+            const tokenInput = document.getElementById('tokenInput');
+            const token = tokenInput ? tokenInput.value.trim() : '';
+            if (!token) {
+                alert('请先粘贴火山引擎控制台生成的临时 Token');
+                throw new Error('Token 未填写');
+            }
+            return {
+                appId: APP_ID,
+                roomId: ROOM_ID,
+                userId: userId,
+                token: token
+            };
+        }
+
+        // 设置连接状态显示
+        function setConnectionState(text) {
+            const el = document.getElementById('connectionStatus');
+            if (el) el.textContent = text;
+        }
+
+        // 初始化 RTC（主播或观众）
+        async function initRTC(asAnchor) {
+            isAnchor = asAnchor;
+            log('info', 'initRTC开始', { role: asAnchor ? 'anchor' : 'viewer', appId: APP_ID, sdkExists: typeof VERTC !== 'undefined' });
+
+            // 调试：列出所有可用事件
+            if (typeof VERTC !== 'undefined' && VERTC.events) {
+                const events = Object.keys(VERTC.events)
+                    .filter(k => typeof VERTC.events[k] === 'string' || typeof VERTC.events[k] === 'number')
+                    .map(k => `${k}=${VERTC.events[k]}`);
+                log('info', 'VERTC.events可用事件', { count: events.length, events: events.join(', ').substring(0, 1000) });
+            }
+
+            const roleOverlay = document.getElementById('roleOverlay');
+            const connStatus = document.getElementById('connectionStatus');
+            const localVideo = document.getElementById('localVideo');
+            const remoteVideo = document.getElementById('remoteVideo');
+
+            if (typeof VERTC === 'undefined') {
+                log('error', 'VERTC未加载');
+                setConnectionState('SDK未加载，CDN可能有问题');
+                if (roleOverlay) roleOverlay.style.display = 'flex';
+                return;
+            }
+
+            // 隐藏角色选择遮罩
+            if (roleOverlay) roleOverlay.style.display = 'none';
+            if (connStatus) connStatus.style.display = 'block';
+
+            // 使用固定 userId，与控制台生成 Token 时填的保持一致
+            const userId = asAnchor ? 'anchor' : 'viewer';
+            log('info', 'userId已生成', { userId });
+
+            let tokenData;
+            try {
+                setConnectionState('获取签名中...');
+                tokenData = await fetchToken(userId);
+            } catch (e) {
+                setConnectionState('获取签名失败: ' + e.message);
+                if (roleOverlay) roleOverlay.style.display = 'flex';
+                return;
+            }
+
+            // 创建引擎
+            try {
+                log('info', '开始创建引擎', { appId: APP_ID });
+                engine = VERTC.createEngine(APP_ID);
+                log('info', '引擎创建成功');
+            } catch (e) {
+                log('error', '创建引擎失败', { error: e.message, code: e.code });
+                setConnectionState('创建引擎失败: ' + e.message);
+                if (roleOverlay) roleOverlay.style.display = 'flex';
+                return;
+            }
+
+            // 监听远端流事件（观众端用）
+            engine.on(VERTC.events.onUserPublishStream, async (e) => {
+                const { userId: remoteUid, mediaType } = e;
+                log('info', 'onUserPublishStream触发', { remoteUid, mediaType });
+                setConnectionState('正在加载主播画面...');
+                try {
+                    const rv = document.getElementById('remoteVideo');
+                    if (rv) rv.style.display = 'block';
+                    await engine.setRemoteVideoPlayer(
+                        VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                        { userId: remoteUid, renderDom: 'remoteVideo' }
+                    );
+                    // 强制播放
+                    if (rv) {
+                        rv.load();
+                        await rv.play().catch(() => log('warn', 'remoteVideo.play被拒，可点击画面激活'));
+                        log('info', 'remoteVideo', { readyState: rv.readyState, videoWidth: rv.videoWidth, videoHeight: rv.videoHeight, paused: rv.paused });
+                    }
+                    if (localVideo) localVideo.style.display = 'none';
+                    log('info', 'setRemoteVideoPlayer成功', { remoteUid });
+                    setConnectionState('直播中');
+                } catch (err) {
+                    log('error', 'setRemoteVideoPlayer失败', { message: err.message, code: err.code });
+                    setConnectionState('加载远端画面失败: ' + err.message);
+                }
+            });
+
+            // 也监听分离的视频/音频发布事件
+            engine.on(VERTC.events.onUserPublishStreamVideo, (e) => {
+                log('info', 'onUserPublishStreamVideo触发', { userId: e.userId });
+            });
+            engine.on(VERTC.events.onUserPublishStreamAudio, (e) => {
+                log('info', 'onUserPublishStreamAudio触发', { userId: e.userId });
+            });
+
+            // 用户进入/离开
+            engine.on(VERTC.events.onUserJoined, (e) => {
+                log('info', 'onUserJoined', { userId: e.userId });
+            });
+            engine.on(VERTC.events.onUserLeave, (e) => {
+                log('info', 'onUserLeave', { userId: e.userId });
+            });
+
+            engine.on(VERTC.events.onUserUnpublishStream, ({ userId: remoteUid }) => {
+                console.log('远端用户停止发布:', remoteUid);
+                setConnectionState('主播已下播');
+                if (remoteVideo) remoteVideo.style.display = 'none';
+                if (localVideo) localVideo.style.display = 'block';
+            });
+
+            // 自动播放失败处理
+            engine.on(VERTC.events.onAutoplayFailed, (e) => {
+                log('error', '自动播放被浏览器阻止', { userId: e.userId, type: e.type });
+                setConnectionState('⏯ 点击黑色画面开始播放');
+                // 让用户点击画面来触发播放
+                const rv = document.getElementById('remoteVideo');
+                if (rv) {
+                    rv.style.cursor = 'pointer';
+                    rv.title = '点击播放';
+                }
+            });
+
+            // 全局点击处理：如果remoteVideo显示且暂停，点击时尝试播放
+            document.addEventListener('click', () => {
+                const rv = document.getElementById('remoteVideo');
+                if (rv && rv.style.display !== 'none' && rv.paused) {
+                    rv.play().then(() => {
+                        setConnectionState('直播中');
+                        log('info', '点击后手动播放成功');
+                    }).catch(err => log('error', '点击播放失败', { msg: err.message }));
+                }
+            });
+
+            engine.on(VERTC.events.onConnectionStateChanged, ({ state }) => {
+                const map = { 0: '连接已断开', 1: '连接中...', 2: '已连接', 3: '重连中...' };
+                setConnectionState(map[state] || '状态: ' + state);
+            });
+
+            // 进房
+            try {
+                setConnectionState('进入房间中...');
+                log('info', '准备进房', {
+                    appId: APP_ID,
+                    roomId: ROOM_ID,
+                    userId: tokenData.userId,
+                    tokenLen: tokenData.token.length,
+                    tokenPrefix: tokenData.token.substring(0, 30)
+                });
+                await engine.joinRoom(
+                    tokenData.token,
+                    ROOM_ID,
+                    { userId: tokenData.userId },
+                    {
+                        isAutoPublish: asAnchor,
+                        isAutoSubscribeAudio: true,
+                        isAutoSubscribeVideo: true,
+                    }
+                );
+                log('info', '进房成功', { userId: tokenData.userId });
+            } catch (e) {
+                const errDetail = {
+                    message: e?.message || '无',
+                    code: e?.code || '无',
+                    name: e?.name || '无',
+                    allKeys: e ? Object.getOwnPropertyNames(e).join(',') : 'null'
+                };
+                log('error', '进房失败', errDetail);
+
+                let errMsg = '进房失败\n';
+                errMsg += 'message: ' + e.message + '\n';
+                errMsg += 'code: ' + (e.code || '无') + '\n';
+                errMsg += 'name: ' + (e.name || '无');
+                setConnectionState(errMsg);
+                alert(errMsg.substring(0, 300));
+                if (roleOverlay) roleOverlay.style.display = 'flex';
+                VERTC.destroyEngine(engine);
+                engine = null;
+                return;
+            }
+
+            if (asAnchor) {
+                // === 主播：开启摄像头和麦克风 ===
+                try {
+                    await engine.startAudioCapture();
+                    await engine.startVideoCapture();
+                } catch (e) {
+                    console.error('摄像头/麦克风启动失败:', e);
+                    setConnectionState('摄像头启动失败: ' + e.message);
+                    await engine.leaveRoom();
+                    VERTC.destroyEngine(engine);
+                    engine = null;
+                    if (roleOverlay) roleOverlay.style.display = 'flex';
+                    return;
+                }
+
+                // 设置本地画面
+                engine.setLocalVideoPlayer(
+                    VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                    { renderDom: 'localVideo' }
+                );
+                localVideo.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+                if (remoteVideo) remoteVideo.style.display = 'none';
+                if (localVideo) localVideo.style.display = 'block';
+
+                setConnectionState('推流中');
+
+                // 更新开关状态
+                document.getElementById('switchCameraBtn').style.display = 'inline-flex';
+                document.getElementById('mirrorBtn').style.display = 'inline-flex';
+            } else {
+                setConnectionState('等待主播开播...');
+                document.getElementById('switchCameraBtn').style.display = 'none';
+                document.getElementById('mirrorBtn').style.display = 'none';
+            }
+
+            rtcActive = true;
+            document.getElementById('stopLiveBtn').style.display = 'inline-flex';
+        }
+
+        // 停止 RTC
+        async function stopRTC() {
+            if (engine) {
+                try {
+                    if (isAnchor) {
+                        engine.stopAudioCapture();
+                        engine.stopVideoCapture();
+                    }
+                    await engine.leaveRoom();
+                    VERTC.destroyEngine(engine);
+                } catch (e) {
+                    console.error('停止 RTC 出错:', e);
+                }
+                engine = null;
+            }
+            rtcActive = false;
+
+            // 恢复 UI
+            const roleOverlay = document.getElementById('roleOverlay');
+            const connStatus = document.getElementById('connectionStatus');
+            const remoteVideo = document.getElementById('remoteVideo');
+            const localVideo = document.getElementById('localVideo');
+            if (roleOverlay) roleOverlay.style.display = 'flex';
+            if (connStatus) connStatus.style.display = 'none';
+            if (remoteVideo) remoteVideo.style.display = 'none';
+            if (localVideo) localVideo.style.display = 'block';
+            document.getElementById('switchCameraBtn').style.display = 'inline-flex';
+            document.getElementById('mirrorBtn').style.display = 'inline-flex';
+            document.getElementById('stopLiveBtn').style.display = 'none';
+            setConnectionState('未连接');
+        }
+
+        // ========== 本地摄像头预览（未推流时的本地预览） ==========
         async function initCamera(facingMode = 'user', allowFallback = true) {
             try {
                 if (currentStream) {
                     currentStream.getTracks().forEach(track => track.stop());
                 }
-                
                 const overlay = document.getElementById('cameraErrorOverlay');
                 const overlayText = document.getElementById('cameraErrorText');
                 const isSecure = window.isSecureContext;
@@ -1020,12 +1401,11 @@
                 if (!isSecure && !isLocalhost) {
                     if (overlay && overlayText) {
                         overlay.style.display = 'flex';
-                        overlayText.textContent = '需要在 HTTPS 或本机 localhost 环境下访问，当前为非安全来源';
+                        overlayText.textContent = '需要在 HTTPS 或本机 localhost 环境下访问';
                     }
                     showCameraError();
                     return;
                 }
-                
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                     if (overlay && overlayText) {
                         overlay.style.display = 'flex';
@@ -1034,7 +1414,6 @@
                     showCameraError();
                     return;
                 }
-                
                 const constraints = {
                     video: {
                         facingMode: { ideal: facingMode },
@@ -1043,21 +1422,16 @@
                     },
                     audio: false
                 };
-                
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 currentStream = stream;
                 const videoElement = document.getElementById('localVideo');
                 videoElement.srcObject = stream;
-                
                 videoElement.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
-                
-                document.getElementById('switchCameraBtn').innerHTML = 
-                    facingMode === 'user' ? 
-                    '<i class="fas fa-camera"></i>' : 
+                document.getElementById('switchCameraBtn').innerHTML =
+                    facingMode === 'user' ?
+                    '<i class="fas fa-camera"></i>' :
                     '<i class="fas fa-camera-rotate"></i>';
-                
                 if (overlay) overlay.style.display = 'none';
-                    
             } catch (err) {
                 console.error("摄像头访问失败:", err);
                 showCameraError();
@@ -1070,39 +1444,47 @@
                         if (err.name === 'NotAllowedError') msg = '未授权访问摄像头，请在浏览器中允许权限';
                         else if (err.name === 'NotFoundError') msg = '未找到可用摄像头或被占用';
                         else if (err.name === 'NotReadableError') msg = '摄像头设备忙或不可读';
-                        else if (err.name === 'OverconstrainedError') msg = '当前摄像头不支持该设置，尝试切换前/后摄像头';
+                        else if (err.name === 'OverconstrainedError') msg = '当前摄像头不支持该设置';
                     }
                     overlayText.textContent = msg;
                 }
                 if (allowFallback) {
                     const nextMode = facingMode === 'user' ? 'environment' : 'user';
-                    try {
-                        await initCamera(nextMode, false);
-                        return;
-                    } catch (_) {}
+                    try { await initCamera(nextMode, false); return; } catch (_) {}
                 }
             }
         }
-        
+
         // 切换前后摄像头
         async function switchCamera() {
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            await initCamera(currentFacingMode);
+            if (rtcActive && isAnchor && engine) {
+                // RTC 模式下切换摄像头：需要重新采集
+                engine.stopVideoCapture();
+                // RTC SDK 使用系统默认切换逻辑，重新开启即可
+                await engine.startVideoCapture();
+                engine.setLocalVideoPlayer(
+                    VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                    { renderDom: 'localVideo' }
+                );
+            } else {
+                await initCamera(currentFacingMode);
+            }
         }
-        
+
         // 切换镜像模式
         function toggleMirror() {
             isMirrored = !isMirrored;
             const videoElement = document.getElementById('localVideo');
             videoElement.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
         }
-        
+
         // 显示摄像头错误
         function showCameraError() {
             const videoElement = document.getElementById('localVideo');
             videoElement.poster = "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80";
         }
-        
+
         function retryCamera() {
             initCamera(currentFacingMode);
         }
@@ -1574,19 +1956,20 @@
         
         // 页面加载完成
         window.addEventListener('DOMContentLoaded', async () => {
+            // 显示角色选择遮罩，等待用户选择
+            // 同时预加载本地摄像头预览
             await initCamera();
             setupTitleClickListener();
             startSimulation();
-            
+
             liveTimer = setInterval(updateLiveDuration, 1000);
-            
+
             // 初始消息
             setTimeout(() => {
-                addChatMessage('系统', '欢迎来到直播间！');
-                sendGift('欢迎礼花', 1);
+                addChatMessage('系统', '欢迎来到直播间！请选择角色开始');
             }, 1000);
-            
-            viewers = Math.floor(Math.random() * 4); 
+
+            viewers = Math.floor(Math.random() * 4);
             updateViewerDisplay();
             
             // 回车发送消息
@@ -1625,6 +2008,17 @@
         
         // 清理资源
         window.addEventListener('beforeunload', () => {
+            // 清理 RTC
+            if (engine) {
+                try {
+                    if (isAnchor) {
+                        engine.stopAudioCapture();
+                        engine.stopVideoCapture();
+                    }
+                    engine.leaveRoom();
+                    VERTC.destroyEngine(engine);
+                } catch (_) {}
+            }
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
             }
