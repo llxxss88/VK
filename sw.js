@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vk-live-pwa-v2';
+const CACHE_NAME = 'vk-live-pwa-v3';
 const ASSETS = ['./', './index.html', './manifest.json'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
