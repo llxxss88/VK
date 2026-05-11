@@ -1772,8 +1772,29 @@
             }
 
             if (asAnchor) {
-                // === 主播：开启摄像头和麦克风 ===
+                // === 主播：用外部视频模式启动（方便后续切换摄像头） ===
                 try {
+                    // 1. 用浏览器原生 API 获取摄像头
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: { ideal: currentFacingMode },
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: false
+                    });
+                    currentStream = stream;
+
+                    // 2. 设为外部视频源（0=EXTERNAL per VERTC.VideoSourceType）
+                    await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 0);
+
+                    // 3. 设置外部视频轨道
+                    await engine.setExternalVideoTrack(
+                        VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                        stream.getVideoTracks()[0]
+                    );
+
+                    // 4. 开启音视频采集
                     await engine.startAudioCapture();
                     await engine.startVideoCapture();
                 } catch (e) {
@@ -1791,10 +1812,15 @@
                     VERTC.StreamIndex.STREAM_INDEX_MAIN,
                     { renderDom: 'localVideo' }
                 );
+                const videoEl = document.getElementById('localVideo');
+                if (videoEl && currentStream) {
+                    videoEl.srcObject = currentStream;
+                }
                 localVideo.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
                 if (remoteVideo) remoteVideo.style.visibility = 'hidden';
                 if (localVideo) localVideo.style.display = 'block';
 
+                useExternalVideo = true;
                 setConnectionState('推流中');
 
                 // 定时同步统计数据给观众
@@ -1947,32 +1973,41 @@
 
             if (rtcActive && isAnchor && engine) {
                 try {
-                    // 1. 停止采集
-                    await engine.stopVideoCapture();
-
-                    // 2. 枚举设备，按 facingMode 匹配真实 deviceId
-                    const devices = await VERTC.enumerateVideoCaptureDevices();
-                    const wantLabel = currentFacingMode === 'user' ? 'front' : 'back';
-                    let target = devices.find(d =>
-                        d.label && d.label.toLowerCase().includes(wantLabel)
-                    );
-                    if (!target && devices.length > 0) target = devices[0];
-
-                    if (target && target.deviceId) {
-                        // 3. 直接用 deviceId 启动采集
-                        await engine.startVideoCapture(target.deviceId);
-
-                        engine.setLocalVideoPlayer(
-                            VERTC.StreamIndex.STREAM_INDEX_MAIN,
-                            { renderDom: 'localVideo' }
-                        );
-                        const videoEl = document.getElementById('localVideo');
-                        if (videoEl) videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
-                        log('info', '摄像头已切换', { facingMode: currentFacingMode, device: target.label });
-                        alert('[成功] 已切换到: ' + target.label);
-                    } else {
-                        alert('未检测到可切换的摄像头 (共' + devices.length + '个设备)');
+                    // 1. 停止旧流
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(t => t.stop());
+                        currentStream = null;
                     }
+
+                    // 2. 用浏览器原生 API 获取新摄像头
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: { ideal: currentFacingMode },
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: false
+                    });
+                    currentStream = stream;
+
+                    // 3. 替换外部视频轨道
+                    await engine.setExternalVideoTrack(
+                        VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                        stream.getVideoTracks()[0]
+                    );
+
+                    // 4. 更新本地预览
+                    engine.setLocalVideoPlayer(
+                        VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                        { renderDom: 'localVideo' }
+                    );
+                    const videoEl = document.getElementById('localVideo');
+                    if (videoEl) {
+                        videoEl.srcObject = stream;
+                        videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+                    }
+
+                    log('info', '摄像头已切换', { facingMode: currentFacingMode });
                 } catch (e) {
                     alert('切换失败: ' + (e && e.message ? e.message : String(e)));
                 }
