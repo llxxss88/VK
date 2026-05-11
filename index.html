@@ -1771,14 +1771,10 @@
             }
 
             if (asAnchor) {
-                // === 主播：开启麦克风 + 摄像头（外部采集，支持 facingMode 切换） ===
+                // === 主播：开启摄像头和麦克风 ===
                 try {
                     await engine.startAudioCapture();
-                    if (currentStream) {
-                        currentStream.getTracks().forEach(t => t.stop());
-                        currentStream = null;
-                    }
-                    currentStream = await startVideoWithFacingMode(currentFacingMode);
+                    await engine.startVideoCapture();
                 } catch (e) {
                     console.error('摄像头/麦克风启动失败:', e);
                     setConnectionState('摄像头启动失败: ' + e.message);
@@ -1842,10 +1838,7 @@
                 try {
                     if (isAnchor) {
                         engine.stopAudioCapture();
-                        if (currentStream) {
-                            currentStream.getTracks().forEach(t => t.stop());
-                            currentStream = null;
-                        }
+                        engine.stopVideoCapture();
                     }
                     await engine.leaveRoom();
                     VERTC.destroyEngine(engine);
@@ -1942,59 +1935,12 @@
             }
         }
 
-        // 用指定 facingMode 采集视频并推流
-        async function startVideoWithFacingMode(facingMode) {
-            // 先设回内部再切外部（SDK 要求）
-            engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 0);
-            engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 1);
-            // 内部=0, 外部=1（避免 VERTC.VideoSourceType 枚举名不匹配）
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: facingMode,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                },
-                audio: false
-            });
-            engine.setExternalVideoTrack(
-                VERTC.StreamIndex.STREAM_INDEX_MAIN,
-                stream.getTracks()[0]
-            );
-            // 触发 SDK 采集（使用外部轨道而非内部摄像头）
-            await engine.startVideoCapture();
-            engine.setLocalVideoPlayer(
-                VERTC.StreamIndex.STREAM_INDEX_MAIN,
-                { renderDom: 'localVideo' }
-            );
-            const videoEl = document.getElementById('localVideo');
-            if (videoEl) videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
-            return stream;
-        }
-
         // 切换前后摄像头
         async function switchCamera() {
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             if (rtcActive && isAnchor && engine) {
                 try {
-                    // 仅在切换时：不重设 sourceType（已在外部模式），直接替换轨道
                     engine.stopVideoCapture();
-                    if (currentStream) {
-                        currentStream.getTracks().forEach(t => t.stop());
-                        currentStream = null;
-                    }
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            facingMode: currentFacingMode,
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        },
-                        audio: false
-                    });
-                    currentStream = stream;
-                    engine.setExternalVideoTrack(
-                        VERTC.StreamIndex.STREAM_INDEX_MAIN,
-                        stream.getTracks()[0]
-                    );
                     await engine.startVideoCapture();
                     engine.setLocalVideoPlayer(
                         VERTC.StreamIndex.STREAM_INDEX_MAIN,
@@ -2002,10 +1948,8 @@
                     );
                     const videoEl = document.getElementById('localVideo');
                     if (videoEl) videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
-                    log('info', '摄像头已切换', { facingMode: currentFacingMode });
                 } catch (e) {
                     log('error', '切换摄像头失败', { error: e.message });
-                    alert('切换失败: ' + e.message);
                 }
             } else {
                 await initCamera(currentFacingMode);
@@ -2635,6 +2579,7 @@
                 try {
                     if (isAnchor) {
                         engine.stopAudioCapture();
+                        engine.stopVideoCapture();
                     }
                     engine.leaveRoom();
                     VERTC.destroyEngine(engine);
