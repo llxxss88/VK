@@ -1940,11 +1940,23 @@
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             if (rtcActive && isAnchor && engine) {
                 try {
-                    // 移动端直接传 "user"/"environment" 字符串即可切换
-                    await engine.setVideoCaptureDevice(currentFacingMode);
-                    log('info', '摄像头已切换', { facingMode: currentFacingMode });
+                    // 1. 用 VERTC 枚举设备（注意：是 VERTC，不是 engine）
+                    const devices = await VERTC.enumerateVideoCaptureDevices();
+                    // 2. 按 facingMode 匹配设备
+                    const wantLabel = currentFacingMode === 'user' ? 'front' : 'back';
+                    let target = devices.find(d => d.label.toLowerCase().includes(wantLabel));
+                    // 兜底：取第一个非当前设备
+                    if (!target && devices.length > 0) target = devices[0];
+                    if (target && target.deviceId) {
+                        await engine.setVideoCaptureDevice(target.deviceId);
+                        log('info', '摄像头已切换', { label: target.label });
+                    } else {
+                        log('info', '未找到摄像头设备');
+                        alert('未检测到可切换的摄像头');
+                    }
                 } catch (e) {
                     log('error', '切换摄像头失败', { error: e.message });
+                    alert('切换失败: ' + e.message);
                 }
             } else {
                 await initCamera(currentFacingMode);
