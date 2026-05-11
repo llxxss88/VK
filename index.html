@@ -2021,15 +2021,22 @@
                     // 5. 开启音频
                     await engine.startAudioCapture();
 
+                    // 5.5. 短暂延迟确保旧摄像头已释放
+                    await new Promise(r => setTimeout(r, 300));
+
                     // 6. 占住不要的摄像头，让 SDK 选目标摄像头
                     const reserveMode = currentFacingMode === 'user' ? 'environment' : 'user';
                     let reserveStream = null;
-                    try {
-                        reserveStream = await navigator.mediaDevices.getUserMedia({
-                            video: { facingMode: { ideal: reserveMode }, width: { ideal: 640 }, height: { ideal: 480 } },
-                            audio: false
-                        });
-                    } catch (_) {}
+                    // 先 exact 确保占对，失败则 ideal 兜底
+                    for (const mode of [{ exact: reserveMode }, { ideal: reserveMode }]) {
+                        try {
+                            reserveStream = await navigator.mediaDevices.getUserMedia({
+                                video: Object.assign({ width: { ideal: 640 }, height: { ideal: 480 } }, mode),
+                                audio: false
+                            });
+                            if (reserveStream) break;
+                        } catch (_) {}
+                    }
 
                     await engine.startVideoCapture();
 
