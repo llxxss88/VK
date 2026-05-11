@@ -1976,12 +1976,32 @@
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             if (rtcActive && isAnchor && engine) {
                 try {
+                    // 仅在切换时：不重设 sourceType（已在外部模式），直接替换轨道
                     engine.stopVideoCapture();
                     if (currentStream) {
                         currentStream.getTracks().forEach(t => t.stop());
                         currentStream = null;
                     }
-                    currentStream = await startVideoWithFacingMode(currentFacingMode);
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: currentFacingMode,
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: false
+                    });
+                    currentStream = stream;
+                    engine.setExternalVideoTrack(
+                        VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                        stream.getTracks()[0]
+                    );
+                    await engine.startVideoCapture();
+                    engine.setLocalVideoPlayer(
+                        VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                        { renderDom: 'localVideo' }
+                    );
+                    const videoEl = document.getElementById('localVideo');
+                    if (videoEl) videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
                     log('info', '摄像头已切换', { facingMode: currentFacingMode });
                 } catch (e) {
                     log('error', '切换摄像头失败', { error: e.message });
