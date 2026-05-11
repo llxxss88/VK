@@ -1449,6 +1449,7 @@
         let myNickname = '';         // 当前用户昵称
         let rtcActive = false;       // RTC 是否已激活
         let currentStream = null;
+        let useExternalVideo = false;  // 是否已切换到外部视频源
         let currentFacingMode = 'user';
         let isMirrored = true;
         let viewers = 1;
@@ -1850,6 +1851,7 @@
                     console.error('停止 RTC 出错:', e);
                 }
                 engine = null;
+                useExternalVideo = false;
             }
             rtcActive = false;
             if (statsSyncInterval) { clearInterval(statsSyncInterval); statsSyncInterval = null; }
@@ -1945,7 +1947,7 @@
 
             if (rtcActive && isAnchor && engine) {
                 try {
-                    // 1. 停止 SDK 内部采集
+                    // 1. 停止当前采集
                     await engine.stopVideoCapture();
 
                     // 2. 停止旧的预览流
@@ -1954,7 +1956,7 @@
                         currentStream = null;
                     }
 
-                    // 3. 用浏览器原生 API 获取新摄像头（已验证可切换）
+                    // 3. 用浏览器原生 API 获取新摄像头
                     const stream = await navigator.mediaDevices.getUserMedia({
                         video: {
                             facingMode: { ideal: currentFacingMode },
@@ -1964,19 +1966,21 @@
                         audio: false
                     });
                     currentStream = stream;
+                    const videoTrack = stream.getVideoTracks()[0];
 
-                    // 4. 切换到外部视频源（第一次：内部→外部；后续：重置状态再设外部）
-                    await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 0); // INTERNAL
-                    await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 1); // EXTERNAL
+                    // 4. 首次切换：内部源 → 外部源；后续：只换轨道
+                    if (!useExternalVideo) {
+                        await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 1); // EXTERNAL
+                        useExternalVideo = true;
+                    }
 
                     // 5. 设置外部视频轨道
-                    const videoTrack = stream.getVideoTracks()[0];
                     await engine.setExternalVideoTrack(VERTC.StreamIndex.STREAM_INDEX_MAIN, videoTrack);
 
                     // 6. 开启采集
                     await engine.startVideoCapture();
 
-                    // 7. 更新本地预览 — SDK 渲染 + 直接 srcObject 双保险
+                    // 7. 更新本地预览
                     engine.setLocalVideoPlayer(
                         VERTC.StreamIndex.STREAM_INDEX_MAIN,
                         { renderDom: 'localVideo' }
