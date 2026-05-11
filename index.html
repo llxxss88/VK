@@ -1970,14 +1970,40 @@
         async function switchCamera() {
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             if (rtcActive && isAnchor && engine) {
-                engine.stopVideoCapture();
-                await engine.startVideoCapture();
-                await engine.setLocalVideoPlayer(
-                    VERTC.StreamIndex.STREAM_INDEX_MAIN,
-                    { renderDom: 'localVideo' }
-                );
-                const innerVid = document.querySelector('#localVideo video');
-                if (innerVid) innerVid.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+                try {
+                    // 1. 停止 SDK 采集
+                    await engine.stopVideoCapture();
+
+                    // 2. 用原生 API 占住"不想要"的摄像头，迫使 SDK 选目标摄像头
+                    const reserveMode = currentFacingMode === 'user' ? 'environment' : 'user';
+                    let reserveStream = null;
+                    try {
+                        reserveStream = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: { ideal: reserveMode }, width: { ideal: 640 }, height: { ideal: 480 } },
+                            audio: false
+                        });
+                    } catch (_) { /* 单摄设备忽略 */ }
+
+                    // 3. 启动 SDK 采集 — 目标摄像头空闲，SDK 会选它
+                    await engine.startVideoCapture();
+
+                    // 4. 释放占位流
+                    if (reserveStream) {
+                        reserveStream.getTracks().forEach(t => t.stop());
+                    }
+
+                    // 5. 更新本地预览
+                    await engine.setLocalVideoPlayer(
+                        VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                        { renderDom: 'localVideo' }
+                    );
+                    const innerVid = document.querySelector('#localVideo video');
+                    if (innerVid) innerVid.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+
+                    log('info', '摄像头已切换', { facingMode: currentFacingMode });
+                } catch (e) {
+                    alert('切换失败: ' + (e && e.message ? e.message : String(e)));
+                }
             } else {
                 await initCamera(currentFacingMode);
             }
