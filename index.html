@@ -1771,10 +1771,14 @@
             }
 
             if (asAnchor) {
-                // === 主播：开启摄像头和麦克风 ===
+                // === 主播：开启麦克风 + 摄像头 ===
                 try {
                     await engine.startAudioCapture();
-                    await engine.startVideoCapture();
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(t => t.stop());
+                        currentStream = null;
+                    }
+                    currentStream = await startVideoWithFacingMode(currentFacingMode);
                 } catch (e) {
                     console.error('摄像头/麦克风启动失败:', e);
                     setConnectionState('摄像头启动失败: ' + e.message);
@@ -1935,32 +1939,45 @@
             }
         }
 
+        // 用指定 facingMode 采集视频并推流
+        async function startVideoWithFacingMode(facingMode) {
+            // 设为外部视频源
+            engine.setVideoSourceType(
+                VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                VERTC.VideoSourceType.VIDEO_SOURCE_TYPE_EXTERNAL
+            );
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: facingMode,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: false
+            });
+            engine.setExternalVideoTrack(
+                VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                stream.getTracks()[0]
+            );
+            engine.setLocalVideoPlayer(
+                VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                { renderDom: 'localVideo' }
+            );
+            const videoEl = document.getElementById('localVideo');
+            if (videoEl) videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+            return stream;
+        }
+
         // 切换前后摄像头
         async function switchCamera() {
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             if (rtcActive && isAnchor && engine) {
                 try {
-                    // 枚举所有摄像头设备（方法在 engine 上，不是 getVideoDeviceManager）
-                    const devices = engine.enumerateVideoCaptureDevices();
-                    const currentId = engine.getVideoCaptureDevice();
-                    log('info', '摄像头列表', { count: devices.length, current: currentId,
-                        list: devices.map(d => ({ id: d.deviceId.substring(0, 8), label: d.label })) });
-                    // 找当前 facingMode 对应的设备
-                    const wantLabel = currentFacingMode === 'user' ? 'front' : 'back';
-                    let target = devices.find(d =>
-                        d.deviceId !== currentId &&
-                        d.label.toLowerCase().includes(wantLabel)
-                    );
-                    // 兜底：随便换一个不同的设备
-                    if (!target) target = devices.find(d => d.deviceId !== currentId);
-                    // 再兜底：只有一个设备就取第一个
-                    if (!target) target = devices[0];
-                    if (target && target.deviceId !== currentId) {
-                        await engine.setVideoCaptureDevice(target.deviceId);
-                        log('info', '摄像头已切换', { to: target.label });
-                    } else {
-                        log('info', '未找到可切换的摄像头');
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(t => t.stop());
+                        currentStream = null;
                     }
+                    currentStream = await startVideoWithFacingMode(currentFacingMode);
+                    log('info', '摄像头已切换', { facingMode: currentFacingMode });
                 } catch (e) {
                     log('error', '切换摄像头失败', { error: e.message });
                     alert('切换失败: ' + e.message);
