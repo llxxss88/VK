@@ -1947,9 +1947,21 @@
 
             if (rtcActive && isAnchor && engine) {
                 try {
-                    // 1. 停止当前采集
-                    await engine.stopVideoCapture();
+                    // 0. 诊断：查看 VERTC.VideoSourceType 的实际值
+                    const vst = VERTC.VideoSourceType;
+                    let extVal = 1; // 默认值
+                    if (vst) {
+                        alert('[诊断] VERTC.VideoSourceType=' + JSON.stringify(vst));
+                        // 尝试找 EXTERNAL 的实际值
+                        extVal = vst.VIDEO_SOURCE_TYPE_EXTERNAL !== undefined ? vst.VIDEO_SOURCE_TYPE_EXTERNAL
+                               : vst.kExternal !== undefined ? vst.kExternal
+                               : vst.EXTERNAL !== undefined ? vst.EXTERNAL
+                               : 1;
+                    } else {
+                        alert('[诊断] VERTC.VideoSourceType 不存在，使用默认值1');
+                    }
 
+                    // 1. 【不调 stopVideoCapture】SDK 文档说 setVideoSourceType 会自动处理
                     // 2. 停止旧的预览流
                     if (currentStream) {
                         currentStream.getTracks().forEach(t => t.stop());
@@ -1968,10 +1980,12 @@
                     currentStream = stream;
                     const videoTrack = stream.getVideoTracks()[0];
 
-                    // 4. 首次切换：内部源 → 外部源；后续：只换轨道
+                    // 4. 首次切换：内部源 → 外部源
                     if (!useExternalVideo) {
-                        await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 1); // EXTERNAL
+                        alert('[诊断] 即将调用 setVideoSourceType(STREAM_INDEX_MAIN, ' + extVal + ')');
+                        await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, extVal);
                         useExternalVideo = true;
+                        alert('[诊断] setVideoSourceType 成功');
                     }
 
                     // 5. 设置外部视频轨道
@@ -1992,6 +2006,7 @@
                     }
 
                     log('info', '摄像头已切换', { facingMode: currentFacingMode });
+                    alert('[成功] 摄像头已切换');
                 } catch (e) {
                     alert('切换失败: ' + (e && e.message ? e.message : String(e)));
                 }
