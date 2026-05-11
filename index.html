@@ -1427,7 +1427,7 @@
 
     <script>
         // ========== 调试日志 ==========
-        const LOG_SERVER = 'http://localhost:3000';
+        const LOG_SERVER = '';  // 相对路径，手机/PC均可访问
         function log(type, message, data) {
             console.log(`[${type}]`, message, data || '');
             try {
@@ -1509,7 +1509,7 @@
         // 初始化摄像头
         // ========== 火山引擎 RTC 核心逻辑 ==========
 
-        // 获取 Token（从页面输入框读取）
+        // 从页面输入框读取 Token
         async function fetchToken(userId) {
             const tokenInput = document.getElementById('tokenInput');
             const token = tokenInput ? tokenInput.value.trim() : '';
