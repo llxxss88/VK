@@ -1960,6 +1960,8 @@
                 VERTC.StreamIndex.STREAM_INDEX_MAIN,
                 stream.getTracks()[0]
             );
+            // 触发 SDK 采集（使用外部轨道而非内部摄像头）
+            await engine.startVideoCapture();
             engine.setLocalVideoPlayer(
                 VERTC.StreamIndex.STREAM_INDEX_MAIN,
                 { renderDom: 'localVideo' }
@@ -1974,6 +1976,7 @@
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             if (rtcActive && isAnchor && engine) {
                 try {
+                    engine.stopVideoCapture();
                     if (currentStream) {
                         currentStream.getTracks().forEach(t => t.stop());
                         currentStream = null;
