@@ -1940,14 +1940,9 @@
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             if (rtcActive && isAnchor && engine) {
                 try {
-                    engine.stopVideoCapture();
-                    await engine.startVideoCapture();
-                    engine.setLocalVideoPlayer(
-                        VERTC.StreamIndex.STREAM_INDEX_MAIN,
-                        { renderDom: 'localVideo' }
-                    );
-                    const videoEl = document.getElementById('localVideo');
-                    if (videoEl) videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+                    // 移动端直接传 "user"/"environment" 字符串即可切换
+                    await engine.setVideoCaptureDevice(currentFacingMode);
+                    log('info', '摄像头已切换', { facingMode: currentFacingMode });
                 } catch (e) {
                     log('error', '切换摄像头失败', { error: e.message });
                 }
