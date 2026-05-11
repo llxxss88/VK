@@ -2008,9 +2008,6 @@
                         document.getElementById('remoteVideo').style.visibility = 'hidden';
                         document.getElementById('localVideo').style.display = 'block';
                     });
-                    engine.on(VERTC.events.onConnectionStateChanged, ({ state }) => {
-                        if (state === 3) setConnectionState('已断开，尝试重连...');
-                    });
 
                     await engine.joinRoom(tokenData.token, ROOM_ID, { userId: 'anchor' }, {
                         isAutoPublish: true,
