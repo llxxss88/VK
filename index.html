@@ -1840,6 +1840,10 @@
                         engine.stopAudioCapture();
                         engine.stopVideoCapture();
                     }
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(t => t.stop());
+                        currentStream = null;
+                    }
                     await engine.leaveRoom();
                     VERTC.destroyEngine(engine);
                 } catch (e) {
@@ -1937,42 +1941,57 @@
 
         // 切换前后摄像头
         async function switchCamera() {
-            alert('[调试] switchCamera 被调用, 当前模式=' + currentFacingMode + ', rtcActive=' + rtcActive + ', isAnchor=' + isAnchor + ', engine=' + !!engine);
-
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-            alert('[调试] 目标模式=' + currentFacingMode);
 
             if (rtcActive && isAnchor && engine) {
-                // 检查 setVideoCaptureDevice 是否存在
-                if (typeof engine.setVideoCaptureDevice !== 'function') {
-                    alert('[错误] engine.setVideoCaptureDevice 不是函数, typeof=' + typeof engine.setVideoCaptureDevice);
-                    return;
-                }
-
-                // 也试试 stop → start 方式
                 try {
+                    // 1. 停止 SDK 内部采集
                     await engine.stopVideoCapture();
-                    alert('[调试] stopVideoCapture 完成');
-                } catch (e) {
-                    alert('[调试] stopVideoCapture 失败: ' + (e && e.message ? e.message : String(e)));
-                }
 
-                try {
-                    await engine.startVideoCapture(currentFacingMode);
-                    alert('[调试] startVideoCapture(' + currentFacingMode + ') 完成');
+                    // 2. 停止旧的预览流
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(t => t.stop());
+                        currentStream = null;
+                    }
+
+                    // 3. 用浏览器原生 API 获取新摄像头（已验证可切换）
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: { ideal: currentFacingMode },
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        },
+                        audio: false
+                    });
+                    currentStream = stream;
+
+                    // 4. 切换到外部视频源（第一次：内部→外部；后续：重置状态再设外部）
+                    await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 0); // INTERNAL
+                    await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 1); // EXTERNAL
+
+                    // 5. 设置外部视频轨道
+                    const videoTrack = stream.getVideoTracks()[0];
+                    await engine.setExternalVideoTrack(VERTC.StreamIndex.STREAM_INDEX_MAIN, videoTrack);
+
+                    // 6. 开启采集
+                    await engine.startVideoCapture();
+
+                    // 7. 更新本地预览 — SDK 渲染 + 直接 srcObject 双保险
                     engine.setLocalVideoPlayer(
                         VERTC.StreamIndex.STREAM_INDEX_MAIN,
                         { renderDom: 'localVideo' }
                     );
                     const videoEl = document.getElementById('localVideo');
-                    if (videoEl) videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+                    if (videoEl) {
+                        videoEl.srcObject = stream;
+                        videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+                    }
+
                     log('info', '摄像头已切换', { facingMode: currentFacingMode });
-                    alert('[成功] 摄像头已切换到: ' + currentFacingMode);
                 } catch (e) {
                     alert('切换失败: ' + (e && e.message ? e.message : String(e)));
                 }
             } else {
-                alert('[调试] 进入 initCamera 分支');
                 await initCamera(currentFacingMode);
             }
         }
