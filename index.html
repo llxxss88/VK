@@ -1772,30 +1772,8 @@
             }
 
             if (asAnchor) {
-                // === 主播：用外部视频模式启动（方便后续切换摄像头） ===
+                // === 主播：开启摄像头和麦克风 ===
                 try {
-                    // 1. 用浏览器原生 API 获取摄像头
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            facingMode: { ideal: currentFacingMode },
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        },
-                        audio: false
-                    });
-                    currentStream = stream;
-
-                    // 2. 先设内部源(1)再切外部源(0) — SDK 状态机要求
-                    await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 1); // INTERNAL
-                    await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 0); // EXTERNAL
-
-                    // 3. 设置外部视频轨道
-                    await engine.setExternalVideoTrack(
-                        VERTC.StreamIndex.STREAM_INDEX_MAIN,
-                        stream.getVideoTracks()[0]
-                    );
-
-                    // 4. 开启音视频采集
                     await engine.startAudioCapture();
                     await engine.startVideoCapture();
                 } catch (e) {
@@ -1813,15 +1791,10 @@
                     VERTC.StreamIndex.STREAM_INDEX_MAIN,
                     { renderDom: 'localVideo' }
                 );
-                const videoEl = document.getElementById('localVideo');
-                if (videoEl && currentStream) {
-                    videoEl.srcObject = currentStream;
-                }
                 localVideo.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
                 if (remoteVideo) remoteVideo.style.visibility = 'hidden';
                 if (localVideo) localVideo.style.display = 'block';
 
-                useExternalVideo = true;
                 setConnectionState('推流中');
 
                 // 定时同步统计数据给观众
@@ -1971,47 +1944,13 @@
         // 切换前后摄像头
         async function switchCamera() {
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
-
             if (rtcActive && isAnchor && engine) {
-                try {
-                    // 1. 停止旧流
-                    if (currentStream) {
-                        currentStream.getTracks().forEach(t => t.stop());
-                        currentStream = null;
-                    }
-
-                    // 2. 用浏览器原生 API 获取新摄像头
-                    const stream = await navigator.mediaDevices.getUserMedia({
-                        video: {
-                            facingMode: { ideal: currentFacingMode },
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        },
-                        audio: false
-                    });
-                    currentStream = stream;
-
-                    // 3. 替换外部视频轨道
-                    await engine.setExternalVideoTrack(
-                        VERTC.StreamIndex.STREAM_INDEX_MAIN,
-                        stream.getVideoTracks()[0]
-                    );
-
-                    // 4. 更新本地预览
-                    engine.setLocalVideoPlayer(
-                        VERTC.StreamIndex.STREAM_INDEX_MAIN,
-                        { renderDom: 'localVideo' }
-                    );
-                    const videoEl = document.getElementById('localVideo');
-                    if (videoEl) {
-                        videoEl.srcObject = stream;
-                        videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
-                    }
-
-                    log('info', '摄像头已切换', { facingMode: currentFacingMode });
-                } catch (e) {
-                    alert('切换失败: ' + (e && e.message ? e.message : String(e)));
-                }
+                engine.stopVideoCapture();
+                await engine.startVideoCapture();
+                engine.setLocalVideoPlayer(
+                    VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                    { renderDom: 'localVideo' }
+                );
             } else {
                 await initCamera(currentFacingMode);
             }
