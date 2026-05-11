@@ -1774,14 +1774,6 @@
             if (asAnchor) {
                 // === 主播：开启摄像头和麦克风 ===
                 try {
-                    // 先清除 initCamera 的预览流，避免 srcObject 残留
-                    if (currentStream) {
-                        currentStream.getTracks().forEach(t => t.stop());
-                        currentStream = null;
-                    }
-                    const lv = document.getElementById('localVideo');
-                    if (lv) lv.srcObject = null;
-
                     await engine.startAudioCapture();
                     await engine.startVideoCapture();
                 } catch (e) {
