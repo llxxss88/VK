@@ -1785,8 +1785,9 @@
                     });
                     currentStream = stream;
 
-                    // 2. 设为外部视频源（0=EXTERNAL per VERTC.VideoSourceType）
-                    await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 0);
+                    // 2. 先设内部源(1)再切外部源(0) — SDK 状态机要求
+                    await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 1); // INTERNAL
+                    await engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 0); // EXTERNAL
 
                     // 3. 设置外部视频轨道
                     await engine.setExternalVideoTrack(
