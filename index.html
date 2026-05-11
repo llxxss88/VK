@@ -1450,7 +1450,7 @@
         let rtcActive = false;       // RTC 是否已激活
         let currentStream = null;
         let useExternalVideo = false;  // 是否已切换到外部视频源
-        let currentFacingMode = 'environment'; // 初始后置摄像头
+        let currentFacingMode = 'user';
         let isMirrored = true;
         let viewers = 1;
         let gifts = [];
@@ -1774,8 +1774,16 @@
             if (asAnchor) {
                 // === 主播：开启摄像头和麦克风 ===
                 try {
+                    // 先清除 initCamera 的预览流，避免 srcObject 残留
+                    if (currentStream) {
+                        currentStream.getTracks().forEach(t => t.stop());
+                        currentStream = null;
+                    }
+                    const lv = document.getElementById('localVideo');
+                    if (lv) lv.srcObject = null;
+
                     await engine.startAudioCapture();
-                    await engine.startVideoCapture('environment'); // 初始后置摄像头
+                    await engine.startVideoCapture();
                 } catch (e) {
                     console.error('摄像头/麦克风启动失败:', e);
                     setConnectionState('摄像头启动失败: ' + e.message);
