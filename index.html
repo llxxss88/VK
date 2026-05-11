@@ -1939,14 +1939,19 @@
         async function switchCamera() {
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             if (rtcActive && isAnchor && engine) {
-                // RTC 模式下切换摄像头：需要重新采集
-                engine.stopVideoCapture();
-                // RTC SDK 使用系统默认切换逻辑，重新开启即可
-                await engine.startVideoCapture();
-                engine.setLocalVideoPlayer(
-                    VERTC.StreamIndex.STREAM_INDEX_MAIN,
-                    { renderDom: 'localVideo' }
-                );
+                try {
+                    const deviceManager = engine.getVideoDeviceManager();
+                    const devices = deviceManager.enumerateVideoCaptureDevices();
+                    const currentId = engine.getVideoCaptureDevice();
+                    // 找到另一个摄像头设备
+                    const target = devices.find(d => d.deviceId !== currentId) || devices[0];
+                    if (target && target.deviceId !== currentId) {
+                        await engine.setVideoCaptureDevice(target.deviceId);
+                        log('info', '摄像头已切换', { from: currentId, to: target.deviceId, label: target.label });
+                    }
+                } catch (e) {
+                    log('error', '切换摄像头失败', { error: e.message });
+                }
             } else {
                 await initCamera(currentFacingMode);
             }
