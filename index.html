@@ -1971,10 +1971,54 @@
             currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
             if (rtcActive && isAnchor && engine) {
                 try {
-                    // 1. 停止 SDK 采集
-                    await engine.stopVideoCapture();
+                    setConnectionState('切换摄像头...');
 
-                    // 2. 用原生 API 占住"不想要"的摄像头，迫使 SDK 选目标摄像头
+                    // 0. 暂停 stats 同步
+                    if (statsSyncInterval) { clearInterval(statsSyncInterval); statsSyncInterval = null; }
+
+                    // 1. 停止当前采集
+                    await engine.stopVideoCapture();
+                    await engine.stopAudioCapture();
+
+                    // 2. 离开房间
+                    await engine.leaveRoom();
+                    VERTC.destroyEngine(engine);
+                    engine = null;
+                    rtcActive = false;
+
+                    // 3. 新建引擎 + 加入房间
+                    const tokenData = await fetchToken('anchor');
+                    engine = VERTC.createEngine(APP_ID);
+
+                    // 4. 注册必要事件（精简版，同 initRTC）
+                    engine.on(VERTC.events.onUserPublishStream, async (e) => {
+                        const { userId: remoteUid } = e;
+                        const rv = document.getElementById('remoteVideo');
+                        if (rv) rv.style.visibility = 'visible';
+                        await engine.setRemoteVideoPlayer(
+                            VERTC.StreamIndex.STREAM_INDEX_MAIN,
+                            { userId: remoteUid, renderDom: rv || 'remoteVideo' }
+                        );
+                        const lv = document.getElementById('localVideo');
+                        if (lv) lv.style.display = 'none';
+                        setConnectionState('直播中');
+                    });
+                    engine.on(VERTC.events.onUserUnpublishStream, () => {
+                        setConnectionState('主播已下播');
+                        document.getElementById('remoteVideo').style.visibility = 'hidden';
+                        document.getElementById('localVideo').style.display = 'block';
+                    });
+                    engine.on(VERTC.events.onConnectionStateChanged, ({ state }) => {
+                        if (state === 3) setConnectionState('已断开，尝试重连...');
+                    });
+
+                    await engine.joinRoom(tokenData.token, ROOM_ID, { userId: 'anchor' });
+                    await engine.publishStream();
+
+                    // 5. 开启音频
+                    await engine.startAudioCapture();
+
+                    // 6. 占住不要的摄像头，让 SDK 选目标摄像头
                     const reserveMode = currentFacingMode === 'user' ? 'environment' : 'user';
                     let reserveStream = null;
                     try {
@@ -1982,17 +2026,17 @@
                             video: { facingMode: { ideal: reserveMode }, width: { ideal: 640 }, height: { ideal: 480 } },
                             audio: false
                         });
-                    } catch (_) { /* 单摄设备忽略 */ }
+                    } catch (_) {}
 
-                    // 3. 启动 SDK 采集 — 目标摄像头空闲，SDK 会选它
                     await engine.startVideoCapture();
 
-                    // 4. 释放占位流
                     if (reserveStream) {
                         reserveStream.getTracks().forEach(t => t.stop());
                     }
 
-                    // 5. 更新本地预览
+                    // 7. 更新本地预览
+                    const container = document.getElementById('localVideo');
+                    if (container) container.innerHTML = '';
                     await engine.setLocalVideoPlayer(
                         VERTC.StreamIndex.STREAM_INDEX_MAIN,
                         { renderDom: 'localVideo' }
@@ -2000,8 +2044,28 @@
                     const innerVid = document.querySelector('#localVideo video');
                     if (innerVid) innerVid.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
 
+                    rtcActive = true;
+
+                    // 8. 恢复 stats 同步
+                    statsSyncInterval = setInterval(() => {
+                        if (engine && rtcActive) {
+                            const total = gifts.reduce((s, g) => s + g.value, 0);
+                            engine.sendRoomMessage(JSON.stringify({
+                                type: 'stats',
+                                viewers: viewers,
+                                giftTotal: total,
+                                liveDuration: Date.now() - liveStartTime,
+                                recentGifts: gifts.slice(-10).map(g => ({
+                                    name: g.name, value: g.value, sender: g.sender, time: g.time.getTime()
+                                }))
+                            }));
+                        }
+                    }, 3000);
+
+                    setConnectionState('推流中');
                     log('info', '摄像头已切换', { facingMode: currentFacingMode });
                 } catch (e) {
+                    setConnectionState('切换失败: ' + e.message);
                     alert('切换失败: ' + (e && e.message ? e.message : String(e)));
                 }
             } else {
