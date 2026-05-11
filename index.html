@@ -1455,7 +1455,7 @@
         let rtcActive = false;       // RTC 是否已激活
         let currentStream = null;
         let useExternalVideo = false;  // 是否已切换到外部视频源
-        let currentFacingMode = 'user';
+        let currentFacingMode = 'environment';
         let isMirrored = true;
         let viewers = 1;
         let gifts = [];
@@ -1790,7 +1790,7 @@
                     }
 
                     await engine.startAudioCapture();
-                    await engine.startVideoCapture();
+                    await engine.startVideoCapture('environment');
                 } catch (e) {
                     console.error('摄像头/麦克风启动失败:', e);
                     setConnectionState('摄像头启动失败: ' + e.message);
