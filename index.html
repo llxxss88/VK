@@ -1959,11 +1959,8 @@
                     if (!target && devices.length > 0) target = devices[0];
 
                     if (target && target.deviceId) {
-                        // 3. 直接用 deviceId 启动采集（不通过 setVideoCaptureDevice）
+                        // 3. 直接用 deviceId 启动采集
                         await engine.startVideoCapture(target.deviceId);
-
-                        // 4. 验证：读取当前设备
-                        const curDev = engine.getVideoCaptureDevice();
 
                         engine.setLocalVideoPlayer(
                             VERTC.StreamIndex.STREAM_INDEX_MAIN,
@@ -1971,8 +1968,8 @@
                         );
                         const videoEl = document.getElementById('localVideo');
                         if (videoEl) videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
-                        log('info', '摄像头已切换', { facingMode: currentFacingMode, device: target.label, currentDevice: curDev });
-                        alert('[成功] 已切换到: ' + target.label + '\n当前设备: ' + JSON.stringify(curDev));
+                        log('info', '摄像头已切换', { facingMode: currentFacingMode, device: target.label });
+                        alert('[成功] 已切换到: ' + target.label);
                     } else {
                         alert('未检测到可切换的摄像头 (共' + devices.length + '个设备)');
                     }
