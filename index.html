@@ -71,8 +71,13 @@
             left: 0;
             width: 100%;
             height: 100%;
+            overflow: hidden;
+        }
+        #localVideo video {
+            width: 100%;
+            height: 100%;
             object-fit: cover;
-            transform: scaleX(-1);
+            transform: scaleX(-1); /* 默认镜像 */
         }
 
         #remoteVideo {
@@ -1089,7 +1094,7 @@
     <div class="container">
         <div class="video-container">
             <div class="video-wrapper">
-                <video id="localVideo" autoplay playsinline muted></video>
+                <div id="localVideo"></div>
                 <div id="remoteVideo"></div>
                 <div class="camera-error-overlay" id="cameraErrorOverlay">
                     <div class="camera-error-box">
@@ -1629,7 +1634,7 @@
                         currentStream.getTracks().forEach(t => t.stop());
                         currentStream = null;
                     }
-                    if (localVideo) { localVideo.style.display = 'none'; localVideo.srcObject = null; }
+                    if (localVideo) { localVideo.style.display = 'none'; }
                     log('info', '远端画面渲染成功', { remoteUid });
                     setConnectionState('直播中');
                 } catch (err) {
@@ -1786,12 +1791,14 @@
                     return;
                 }
 
-                // 设置本地画面
-                engine.setLocalVideoPlayer(
+                // 设置本地画面（SDK 会在 localVideo 容器内创建 video 元素）
+                await engine.setLocalVideoPlayer(
                     VERTC.StreamIndex.STREAM_INDEX_MAIN,
                     { renderDom: 'localVideo' }
                 );
-                localVideo.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+                // SDK 已创建内部 video，应用镜像变换
+                const innerVideo = localVideo.querySelector('video');
+                if (innerVideo) innerVideo.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
                 if (remoteVideo) remoteVideo.style.visibility = 'hidden';
                 if (localVideo) localVideo.style.display = 'block';
 
@@ -1910,9 +1917,17 @@
                 };
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 currentStream = stream;
-                const videoElement = document.getElementById('localVideo');
-                videoElement.srcObject = stream;
-                videoElement.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+                const container = document.getElementById('localVideo');
+                let videoEl = container.querySelector('video');
+                if (!videoEl) {
+                    videoEl = document.createElement('video');
+                    videoEl.autoplay = true;
+                    videoEl.playsInline = true;
+                    videoEl.muted = true;
+                    container.appendChild(videoEl);
+                }
+                videoEl.srcObject = stream;
+                videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
                 document.getElementById('switchCameraBtn').innerHTML =
                     facingMode === 'user' ?
                     '<i class="fas fa-camera"></i>' :
@@ -1947,10 +1962,12 @@
             if (rtcActive && isAnchor && engine) {
                 engine.stopVideoCapture();
                 await engine.startVideoCapture();
-                engine.setLocalVideoPlayer(
+                await engine.setLocalVideoPlayer(
                     VERTC.StreamIndex.STREAM_INDEX_MAIN,
                     { renderDom: 'localVideo' }
                 );
+                const innerVid = document.querySelector('#localVideo video');
+                if (innerVid) innerVid.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
             } else {
                 await initCamera(currentFacingMode);
             }
@@ -1959,14 +1976,16 @@
         // 切换镜像模式
         function toggleMirror() {
             isMirrored = !isMirrored;
-            const videoElement = document.getElementById('localVideo');
-            videoElement.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
+            const container = document.getElementById('localVideo');
+            const videoEl = container && container.querySelector('video');
+            if (videoEl) videoEl.style.transform = isMirrored ? 'scaleX(-1)' : 'scaleX(1)';
         }
 
         // 显示摄像头错误
         function showCameraError() {
-            const videoElement = document.getElementById('localVideo');
-            videoElement.poster = "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80";
+            const container = document.getElementById('localVideo');
+            const videoEl = container && container.querySelector('video');
+            if (videoEl) videoEl.poster = "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80";
         }
 
         function retryCamera() {
