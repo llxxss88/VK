@@ -2012,8 +2012,11 @@
                         if (state === 3) setConnectionState('已断开，尝试重连...');
                     });
 
-                    await engine.joinRoom(tokenData.token, ROOM_ID, { userId: 'anchor' });
-                    await engine.publishStream();
+                    await engine.joinRoom(tokenData.token, ROOM_ID, { userId: 'anchor' }, {
+                        isAutoPublish: true,
+                        isAutoSubscribeAudio: true,
+                        isAutoSubscribeVideo: true
+                    });
 
                     // 5. 开启音频
                     await engine.startAudioCapture();
