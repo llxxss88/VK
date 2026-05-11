@@ -2551,9 +2551,6 @@
         
         // 页面加载完成
         window.addEventListener('DOMContentLoaded', async () => {
-            // 显示角色选择遮罩，等待用户选择
-            // 同时预加载本地摄像头预览
-            await initCamera();
             setupTitleClickListener();
             startSimulation();
 
