@@ -20,3 +20,4 @@ node_modules/
 
 # 注意：server/genToken.js 包含 AppKey，请勿推送到公开仓库
 server/genToken.js
+choujiang/
