@@ -1944,10 +1944,10 @@
 
         // 用指定 facingMode 采集视频并推流
         async function startVideoWithFacingMode(facingMode) {
-            engine.setVideoSourceType(
-                VERTC.StreamIndex.STREAM_INDEX_MAIN,
-                VERTC.VideoSourceType.VIDEO_SOURCE_TYPE_EXTERNAL
-            );
+            // 先设回内部再切外部（SDK 要求）
+            engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 0);
+            engine.setVideoSourceType(VERTC.StreamIndex.STREAM_INDEX_MAIN, 1);
+            // 内部=0, 外部=1（避免 VERTC.VideoSourceType 枚举名不匹配）
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: facingMode,
