@@ -1498,6 +1498,7 @@
         // ========== 全局变量 ==========
         let engine = null;            // 火山引擎 RTC 引擎
         let isAnchor = false;        // 当前角色：主播/观众
+        let myUserId = '';           // 当前用户唯一ID
         let myNickname = '';         // 当前用户昵称
         let rtcActive = false;       // RTC 是否已激活
         let currentStream = null;
@@ -1565,10 +1566,30 @@
 
         // 从页面输入框读取 Token
         async function fetchToken(userId) {
+            const role = (userId === 'anchor') ? 'anchor' : 'viewer';
+            // 优先从服务器自动获取（官方二进制格式 Token）
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 3000);
+                const resp = await fetch(`/token?roomId=${encodeURIComponent(ROOM_ID)}&userId=${encodeURIComponent(userId)}&role=${role}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeout);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.token) {
+                        log('info', 'Token自动生成', { userId, role, tokenLen: data.token.length });
+                        return data;
+                    }
+                }
+            } catch (_) {
+                log('warn', '/token不可达，回退手动输入');
+            }
+
             const tokenInput = document.getElementById('tokenInput');
             const token = tokenInput ? tokenInput.value.trim() : '';
             if (!token) {
-                alert('请先粘贴火山引擎控制台生成的临时 Token');
+                alert('请粘贴火山引擎控制台的 Token，或启动本地服务器自动生成');
                 throw new Error('Token 未填写');
             }
             return {
@@ -1591,7 +1612,7 @@
             try {
                 const msg = JSON.parse(e.message);
                 if (msg.type === 'danmu') {
-                    if (msg.fromUserId === (isAnchor ? 'anchor' : 'viewer')) return;
+                    if (msg.fromUserId === myUserId) return;
                     sendDanmu(msg.content, msg.user);
                 } else if (msg.type === 'stats') {
                     if (!isAnchor) {
@@ -1607,7 +1628,7 @@
                         }
                     }
                 } else if (msg.type === 'gift') {
-                    if (msg.fromUserId === (isAnchor ? 'anchor' : 'viewer')) return;
+                    if (msg.fromUserId === myUserId) return;
                     const gift = { name: msg.name, value: msg.value, sender: msg.sender, time: new Date() };
                     gifts.push(gift);
                     updateGiftDisplay();
@@ -1653,7 +1674,8 @@
             if (connStatus) connStatus.style.display = 'block';
 
             // 使用固定 userId，与控制台生成 Token 时填的保持一致
-            const userId = asAnchor ? 'anchor' : 'viewer';
+            myUserId = asAnchor ? 'anchor' : ('viewer_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
+            const userId = myUserId;
 
             // 设置昵称
             const nicknameInput = document.getElementById('nicknameInput');
@@ -2258,7 +2280,7 @@
                     user: myNickname || (isAnchor ? '主播' : '观众'),
                     content: content,
                     time: Date.now(),
-                    fromUserId: isAnchor ? 'anchor' : 'viewer'
+                    fromUserId: myUserId
                 }));
                 log('info', '发送房间消息', { user: myNickname, content });
             } catch (e) {
@@ -2436,7 +2458,7 @@
                         name: name,
                         value: value,
                         sender: gift.sender,
-                        fromUserId: isAnchor ? 'anchor' : 'viewer'
+                        fromUserId: myUserId
                     }));
                 } catch (_) {}
             }
