@@ -1537,6 +1537,44 @@
             if (el) el.textContent = text;
         }
 
+        // 房间消息处理（弹幕/统计/礼物），initRTC 和 switchCamera 共享
+        function handleRoomMessage(e) {
+            log('info', '收到房间消息', { userId: e.userId, message: e.message });
+            try {
+                const msg = JSON.parse(e.message);
+                if (msg.type === 'danmu') {
+                    if (msg.fromUserId === (isAnchor ? 'anchor' : 'viewer')) return;
+                    sendDanmu(msg.content, msg.user);
+                } else if (msg.type === 'stats') {
+                    if (!isAnchor) {
+                        viewers = msg.viewers;
+                        updateViewerDisplay();
+                        document.getElementById('giftTotal').textContent = formatNumber(msg.giftTotal);
+                        const secs = Math.floor(msg.liveDuration / 1000);
+                        document.getElementById('liveDuration').textContent =
+                            `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+                        if (msg.recentGifts && msg.recentGifts.length) {
+                            gifts = msg.recentGifts.map(g => ({ ...g, time: new Date(g.time) }));
+                            updateGiftDisplay();
+                        }
+                    }
+                } else if (msg.type === 'gift') {
+                    if (msg.fromUserId === (isAnchor ? 'anchor' : 'viewer')) return;
+                    const gift = { name: msg.name, value: msg.value, sender: msg.sender, time: new Date() };
+                    gifts.push(gift);
+                    updateGiftDisplay();
+                    showGiftAnimation(msg.name, msg.value);
+                    const giftDanmu = document.createElement('div');
+                    giftDanmu.className = 'danmu-item gift-message';
+                    giftDanmu.textContent = `🎁 ${msg.sender} 赠送了 ${msg.name} (¥${msg.value})`;
+                    giftDanmu.style.top = `${20 + Math.random() * 60}%`;
+                    document.body.appendChild(giftDanmu);
+                    setTimeout(() => { if (giftDanmu.parentNode) giftDanmu.parentNode.removeChild(giftDanmu); }, 8000);
+                    addChatMessage('系统', `${msg.sender} 赠送了 ${msg.name} 价值 ¥${msg.value}`);
+                }
+            } catch (_) {}
+        }
+
         // 初始化 RTC（主播或观众）
         async function initRTC(asAnchor) {
             isAnchor = asAnchor;
@@ -1660,42 +1698,7 @@
             });
 
             // 房间消息（弹幕/统计/礼物）
-            engine.on(VERTC.events.onRoomMessageReceived, (e) => {
-                log('info', '收到房间消息', { userId: e.userId, message: e.message });
-                try {
-                    const msg = JSON.parse(e.message);
-                    if (msg.type === 'danmu') {
-                        if (msg.fromUserId === (isAnchor ? 'anchor' : 'viewer')) return;
-                        sendDanmu(msg.content, msg.user);
-                    } else if (msg.type === 'stats') {
-                        if (!isAnchor) {
-                            viewers = msg.viewers;
-                            updateViewerDisplay();
-                            document.getElementById('giftTotal').textContent = formatNumber(msg.giftTotal);
-                            const secs = Math.floor(msg.liveDuration / 1000);
-                            document.getElementById('liveDuration').textContent =
-                                `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
-                            if (msg.recentGifts && msg.recentGifts.length) {
-                                gifts = msg.recentGifts.map(g => ({ ...g, time: new Date(g.time) }));
-                                updateGiftDisplay();
-                            }
-                        }
-                    } else if (msg.type === 'gift') {
-                        if (msg.fromUserId === (isAnchor ? 'anchor' : 'viewer')) return;
-                        const gift = { name: msg.name, value: msg.value, sender: msg.sender, time: new Date() };
-                        gifts.push(gift);
-                        updateGiftDisplay();
-                        showGiftAnimation(msg.name, msg.value);
-                        const giftDanmu = document.createElement('div');
-                        giftDanmu.className = 'danmu-item gift-message';
-                        giftDanmu.textContent = `🎁 ${msg.sender} 赠送了 ${msg.name} (¥${msg.value})`;
-                        giftDanmu.style.top = `${20 + Math.random() * 60}%`;
-                        document.body.appendChild(giftDanmu);
-                        setTimeout(() => { if (giftDanmu.parentNode) giftDanmu.parentNode.removeChild(giftDanmu); }, 8000);
-                        addChatMessage('系统', `${msg.sender} 赠送了 ${msg.name} 价值 ¥${msg.value}`);
-                    }
-                } catch (_) {}
-            });
+            engine.on(VERTC.events.onRoomMessageReceived, handleRoomMessage);
 
             engine.on(VERTC.events.onUserUnpublishStream, ({ userId: remoteUid }) => {
                 console.log('远端用户停止发布:', remoteUid);
@@ -2008,6 +2011,7 @@
                         document.getElementById('remoteVideo').style.visibility = 'hidden';
                         document.getElementById('localVideo').style.display = 'block';
                     });
+                    engine.on(VERTC.events.onRoomMessageReceived, handleRoomMessage);
 
                     await engine.joinRoom(tokenData.token, ROOM_ID, { userId: 'anchor' }, {
                         isAutoPublish: true,
