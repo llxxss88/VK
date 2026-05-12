@@ -1326,7 +1326,7 @@
                         <div class="profile-card-time">2小时前</div>
                     </div>
                 </div>
-                <div class="profile-card-content">今晚8点准时开播！来听新歌首唱，不见不散 🔥</div>
+                <div class="profile-card-content">今晚老时间准时开播！不见不散 🔥</div>
                 <div class="profile-card-image"><img src="images/1jpeg.jpeg" alt="新歌预告封面"></div>
                 <div class="profile-card-actions">
                     <span><i class="far fa-heart"></i> 241</span>
@@ -1342,7 +1342,7 @@
                         <div class="profile-card-time">昨天</div>
                     </div>
                 </div>
-                <div class="profile-card-content">感谢大家昨天的支持！粉丝团突破50人了，感动到哭 😭 今晚继续抽奖回馈大家！</div>
+                <div class="profile-card-content">感谢大家昨天的支持！粉丝团突破50人了，感动到哭 😭 未来会带给大家更多精彩内容！</div>
                 <div class="profile-card-actions">
                     <span><i class="far fa-heart"></i> 528</span>
                     <span><i class="far fa-comment"></i> 103</span>
@@ -1357,7 +1357,7 @@
                         <div class="profile-card-time">3天前</div>
                     </div>
                 </div>
-                <div class="profile-card-content">分享一下今天的日常～在录音棚待了一整天，新歌马上要和大家见面了！</div>
+                <div class="profile-card-content">好久不见兄弟们！</div>
                 <div class="profile-card-image"><img src="images/26.jpeg" alt="录音棚日常"></div>
                 <div class="profile-card-actions">
                     <span><i class="far fa-heart"></i> 376</span>
@@ -1473,6 +1473,8 @@
         let simulationIntervals = [];
         let statsSyncInterval = null;
         const viewerCap = 42;
+        const viewerMax = 60;
+        const viewerMin = 15;
         let growthIntervalId = null;
         let fluctuationIntervalId = null;
         
@@ -2340,18 +2342,18 @@
         
         // 更新观众数
         function addViewer() {
-            viewers += Math.floor(Math.random() * 10) + 1;
+            viewers = Math.min(viewerMax, viewers + Math.floor(Math.random() * 10) + 1);
             updateViewerDisplay();
-            
+
             if (isHiddenControlsVisible) {
                 document.getElementById('panelViewerCount').textContent = viewers;
             }
         }
-        
+
         // 随机增加观众
         function addRandomViewers() {
-            const randomCount = Math.floor(Math.random() *1) +2;
-            viewers += randomCount;
+            const randomCount = Math.floor(Math.random() * 5) + 2;
+            viewers = Math.min(viewerMax, viewers + randomCount);
             updateViewerDisplay();
             if (isHiddenControlsVisible) {
                 document.getElementById('panelViewerCount').textContent = viewers;
@@ -2611,10 +2613,10 @@
                 const addMode = Math.random() < 0.5;
                 if (addMode) {
                     const inc = 1 + Math.floor(Math.random() * 3); // +1到+3
-                    viewers = Math.min(viewerCap, viewers + inc);
+                    viewers = Math.min(viewerMax, viewers + inc);
                 } else {
                     const dec = 1 + Math.floor(Math.random() * 2); // -1到-2
-                    viewers = Math.max(1, viewers - dec);
+                    viewers = Math.max(viewerMin, viewers - dec);
                 }
                 updateViewerDisplay();
                 if (isHiddenControlsVisible) {
