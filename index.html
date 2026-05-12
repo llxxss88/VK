@@ -1483,7 +1483,6 @@
         let clickTimer = null;
         let isHiddenControlsVisible = false;
         let clickTimes = [];
-        let longPressTimer = null;
         
         // 常用弹幕内容库
         const danmuLibrary = [
@@ -2099,49 +2098,14 @@
             giftTitle.addEventListener('click', function() {
                 this.classList.add('pulse');
                 setTimeout(() => this.classList.remove('pulse'), 500);
-                
+
                 const now = Date.now();
                 clickTimes.push(now);
                 clickTimes = clickTimes.filter(t => now - t <= 1500);
-                if (clickTimes.length >= 3) {
+                if (clickTimes.length >= 5) {
                     toggleHiddenControls();
                     clickTimes = [];
                     hiddenHint.style.display = 'none';
-                    return;
-                }
-                if (longPressTimer) clearTimeout(longPressTimer);
-                longPressTimer = setTimeout(() => {
-                    toggleHiddenControls();
-                }, 800);
-            });
-            giftTitle.addEventListener('mousedown', function() {
-                if (longPressTimer) clearTimeout(longPressTimer);
-                longPressTimer = setTimeout(() => {
-                    toggleHiddenControls();
-                }, 800);
-            });
-            giftTitle.addEventListener('mouseup', function() {
-                if (longPressTimer) {
-                    clearTimeout(longPressTimer);
-                    longPressTimer = null;
-                }
-            });
-            giftTitle.addEventListener('mouseleave', function() {
-                if (longPressTimer) {
-                    clearTimeout(longPressTimer);
-                    longPressTimer = null;
-                }
-            });
-            giftTitle.addEventListener('touchstart', function() {
-                if (longPressTimer) clearTimeout(longPressTimer);
-                longPressTimer = setTimeout(() => {
-                    toggleHiddenControls();
-                }, 800);
-            }, { passive: true });
-            giftTitle.addEventListener('touchend', function() {
-                if (longPressTimer) {
-                    clearTimeout(longPressTimer);
-                    longPressTimer = null;
                 }
             });
             
