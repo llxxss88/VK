@@ -18,6 +18,6 @@ desktop.ini
 # Node
 node_modules/
 
-# 注意：server/genToken.js 包含 AppKey，请勿推送到公开仓库
-server/genToken.js
+# 服务器目录（含敏感AppKey，不要推送到公开仓库）
+server/
 choujiang/
