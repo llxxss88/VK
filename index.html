@@ -1161,7 +1161,7 @@
                 <!-- 角色选择遮罩 -->
                 <div class="role-overlay" id="roleOverlay">
                     <input type="text" id="tokenInput" placeholder="Token" style="width:280px; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.6); color:white; font-size:13px; text-align:center;">
-                    <input type="text" id="userIdInput" placeholder="用户ID (默认: anchor/viewer)" maxlength="32" style="width:280px; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.6); color:white; font-size:13px; text-align:center;">
+                    <input type="text" id="userIdInput" placeholder="用户ID " maxlength="32" style="width:280px; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.6); color:white; font-size:13px; text-align:center;">
                     <input type="text" id="nicknameInput" placeholder="昵称" maxlength="12" style="width:280px; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.6); color:white; font-size:13px; text-align:center;">
                     <div style="display:flex; gap:10px;">
                         <button class="role-btn anchor-btn" onclick="initRTC(true)">
@@ -1190,7 +1190,7 @@
         <div class="stats-container">
             <div class="stat-item">
                 <div class="stat-label">在线观众</div>
-                <div class="stat-value" id="viewerCount">1</div>
+                <div class="stat-value" id="viewerCount">0</div>
             </div>
             <div class="stat-item">
                 <div class="stat-label">收到礼物</div>
@@ -1505,7 +1505,7 @@
         let useExternalVideo = false;  // 是否已切换到外部视频源
         let currentFacingMode = 'environment';
         let isMirrored = true;
-        let viewers = 1;
+        let viewers = 0;
         let gifts = [];
         let chatMessages = [];
         let liveStartTime = Date.now();
@@ -1866,6 +1866,7 @@
                 if (localVideo) localVideo.style.display = 'block';
 
                 setConnectionState('推流中');
+                startLiveFeatures();
 
                 // 定时同步统计数据给观众
                 statsSyncInterval = setInterval(() => {
@@ -2495,6 +2496,16 @@
             setTimeout(() => clickHint.classList.remove('show'), 1500);
         }
         
+        // 开播后启动数据刷新
+        let liveFeaturesStarted = false;
+        function startLiveFeatures() {
+            if (liveFeaturesStarted) return;
+            liveFeaturesStarted = true;
+            liveStartTime = Date.now();
+            liveTimer = setInterval(updateLiveDuration, 1000);
+            startSimulation();
+        }
+
         // 更新直播时长
         function updateLiveDuration() {
             const duration = Date.now() - liveStartTime;
@@ -2650,17 +2661,6 @@
         // 页面加载完成
         window.addEventListener('DOMContentLoaded', async () => {
             setupTitleClickListener();
-            startSimulation();
-
-            liveTimer = setInterval(updateLiveDuration, 1000);
-
-            // 初始消息
-            setTimeout(() => {
-                addChatMessage('系统', '欢迎来到直播间！请选择角色开始');
-            }, 1000);
-
-            viewers = Math.floor(Math.random() * 4);
-            updateViewerDisplay();
             
             // 回车发送消息
             const chatInputEl = document.getElementById('chatInput');
