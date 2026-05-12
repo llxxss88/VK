@@ -1161,6 +1161,7 @@
                 <!-- 角色选择遮罩 -->
                 <div class="role-overlay" id="roleOverlay">
                     <input type="text" id="tokenInput" placeholder="Token" style="width:280px; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.6); color:white; font-size:13px; text-align:center;">
+                    <input type="text" id="userIdInput" placeholder="用户ID (默认: anchor/viewer)" maxlength="32" style="width:280px; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.6); color:white; font-size:13px; text-align:center;">
                     <input type="text" id="nicknameInput" placeholder="你的昵称" maxlength="12" style="width:280px; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.3); background:rgba(0,0,0,0.6); color:white; font-size:13px; text-align:center;">
                     <div style="display:flex; gap:10px;">
                         <button class="role-btn anchor-btn" onclick="initRTC(true)">
@@ -1652,8 +1653,9 @@
             if (roleOverlay) roleOverlay.style.display = 'none';
             if (connStatus) connStatus.style.display = 'block';
 
-            // 使用固定 userId，与控制台生成 Token 时填的保持一致
-            const userId = asAnchor ? 'anchor' : 'viewer';
+            // 用户ID：优先读取输入框，否则用默认值
+            const userIdInput = document.getElementById('userIdInput');
+            const userId = (userIdInput && userIdInput.value.trim()) || (asAnchor ? 'anchor' : 'viewer');
 
             // 设置昵称
             const nicknameInput = document.getElementById('nicknameInput');
@@ -2038,7 +2040,9 @@
                     rtcActive = false;
 
                     // 3. 新建引擎 + 加入房间
-                    const tokenData = await fetchToken('anchor');
+                    const userIdInput = document.getElementById('userIdInput');
+                    const switchUserId = (userIdInput && userIdInput.value.trim()) || 'anchor';
+                    const tokenData = await fetchToken(switchUserId);
                     engine = VERTC.createEngine(APP_ID);
 
                     // 4. 注册必要事件（精简版，同 initRTC）
